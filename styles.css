@@ -3573,3 +3573,43 @@ body.cart-open-lock{
     border-radius:999px !important;
   }
 }
+
+/* ElectroIsla — Continuar con mi pedido: mismo estilo visual que Ver mi pedido */
+.cart-previous-btn{
+  background:#fff1e8!important;
+  color:#ff7600!important;
+  border:0!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  font-weight:600!important;
+}
+.cart-previous-btn:hover{
+  background:#ffe5d6!important;
+  color:#f56e00!important;
+  box-shadow:none!important;
+}
+.cart-previous-arrow{
+  color:#ff7600!important;
+}
+
+
+/* v9.8.126 — "Continuar con mi pedido": mismo estilo que "Ver mi pedido" */
+.cart-previous-btn{
+  background:#ffeadc !important;
+  color:#f58220 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  font-weight:600 !important;
+  box-shadow:none !important;
+}
+.cart-previous-btn:hover{
+  background:#ffdfc7 !important;
+  color:#f58220 !important;
+  box-shadow:none !important;
+}
+.cart-previous-btn:active{
+  transform:scale(.98) !important;
+}
+.cart-previous-arrow{
+  color:#f58220 !important;
+}
