@@ -3490,235 +3490,86 @@ body.cart-open-lock{
   .shop-product .price{font-size:17px!important;font-weight:600!important;}
 }
 
-/* v9.8.126 — tipografía de productos de la página principal */
-@media(max-width:700px){
-  .shop-product h3{font-size:15px!important;font-weight:500!important;}
-  .shop-product p{font-size:12px!important;font-weight:400!important;}
-  .shop-product .tag{font-size:13px!important;font-weight:400!important;}
-  .shop-product .price{font-size:15px!important;font-weight:500!important;}
+
+/* ElectroIsla — botón "Ver mi Pedido" con el estilo de las categorías */
+.sticky-order-btn{
+  background:#ffe8d6 !important;
+  color:#f58220 !important;
+  border:0 !important;
+  border-radius:28px !important;
+  font-weight:500 !important;
+  box-shadow:0 4px 12px rgba(245,130,32,.12) !important;
+  transition:transform .12s ease, box-shadow .12s ease, background .12s ease !important;
+}
+.sticky-order-btn:hover{
+  background:#ffdfc7 !important;
+  color:#f58220 !important;
+  transform:translateY(-1px) !important;
+  box-shadow:0 6px 14px rgba(245,130,32,.16) !important;
+}
+.sticky-order-btn:active{
+  transform:scale(.98) !important;
+  box-shadow:0 3px 8px rgba(245,130,32,.12) !important;
 }
 
-/* v9.8.127 — productos de la página principal: foto a la izquierda y textos a 4px */
-.shop-product{grid-template-columns:150px minmax(0,1fr)!important;gap:4px!important;}
-.shop-product .product-media{grid-column:1;grid-row:1;}
-.shop-product .product-info{grid-column:2;grid-row:1;text-align:left;min-width:0;}
-@media(max-width:700px){
-  .shop-product{grid-template-columns:128px minmax(0,1fr)!important;gap:4px!important;}
-  .shop-product .product-media{grid-column:1;grid-row:1;}
-  .shop-product .product-info{grid-column:2;grid-row:1;}
+/* ElectroIsla — botón "Ver mi Pedido" con estilo de referencia Alimentos */
+.sticky-order-btn{
+  background:#ffeadc !important;
+  color:#f58220 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  font-weight:500 !important;
+  box-shadow:none !important;
+  padding:13px 24px !important;
+  min-width:155px;
+  transition:background .15s ease, transform .12s ease !important;
 }
-
-/* v9.8.128 — página principal: texto a la izquierda y foto a la derecha, separados 4px */
-.shop-product{
-  grid-template-columns:minmax(0,1fr) 150px!important;
-  gap:4px!important;
+.sticky-order-btn:hover{
+  background:#ffe2d0 !important;
+  color:#f58220 !important;
+  transform:translateY(-1px);
+  box-shadow:none !important;
 }
-.shop-product .product-info{
-  grid-column:1!important;
-  grid-row:1!important;
-  text-align:left!important;
-}
-.shop-product .product-media{
-  grid-column:2!important;
-  grid-row:1!important;
-}
-@media(max-width:700px){
-  .shop-product{
-    grid-template-columns:minmax(0,1fr) 128px!important;
-    gap:4px!important;
-  }
-  .shop-product .product-info{
-    grid-column:1!important;
-    grid-row:1!important;
-  }
-  .shop-product .product-media{
-    grid-column:2!important;
-    grid-row:1!important;
-  }
-}
-
-/* v9.8.129 — página principal: textos pegados al margen izquierdo de la foto, con 4px */
-.shop-product .product-info{
-  text-align:right!important;
-  padding:0!important;
-  margin:0!important;
-  justify-self:stretch!important;
-}
-.shop-product{
-  column-gap:4px!important;
+.sticky-order-btn:active{
+  transform:scale(.98);
+  box-shadow:none !important;
 }
 @media(max-width:700px){
-  .shop-product .product-info{
-    text-align:right!important;
-    padding:0!important;
-    margin:0!important;
+  .sticky-order-btn{
+    min-width:155px;
+    padding:13px 18px !important;
+    border-radius:999px !important;
+    font-size:15px !important;
   }
-  .shop-product{column-gap:4px!important;}
 }
 
-
-/* v9.8.130 — página principal: texto alineado al extremo derecho, a 5px del borde */
+/* ElectroIsla — Ver mi pedido: estilo de referencia Alimentos */
+.sticky-order-btn{
+  background:#fff0e6 !important;
+  color:#f58220 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  font-weight:600 !important;
+  box-shadow:none !important;
+  padding:14px 28px !important;
+  min-width:190px !important;
+  line-height:1.15 !important;
+}
+.sticky-order-btn:hover,
+.sticky-order-btn:focus-visible{
+  background:#ffe8d8 !important;
+  color:#f58220 !important;
+  box-shadow:none !important;
+}
+.sticky-order-btn:active{
+  background:#ffe2d0 !important;
+  color:#f58220 !important;
+  transform:scale(.98);
+}
 @media(max-width:700px){
-  .shop-product .product-info{
-    text-align:right!important;
-    padding-right:5px!important;
-    box-sizing:border-box!important;
-  }
-}
-
-/* v9.8.131 — corrección real: alinear el texto de los productos a la derecha con 5px del borde */
-.shop-product .product-info{
-  text-align:right!important;
-  padding-right:5px!important;
-  margin:0!important;
-  box-sizing:border-box!important;
-  width:100%!important;
-}
-@media(max-width:700px){
-  .shop-product .product-info{
-    text-align:right!important;
-    padding-right:5px!important;
-    width:100%!important;
-  }
-}
-
-/* v9.8.132 — corrección estructural de alineación del texto en productos de la página principal */
-@media(max-width:700px){
-  .shop-product{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 128px!important;
-    column-gap:4px!important;
-    align-items:center!important;
-    padding-right:0!important;
-  }
-  .shop-product .product-info{
-    grid-column:1!important;
-    grid-row:1!important;
-    width:auto!important;
-    min-width:0!important;
-    margin:0!important;
-    padding:0!important;
-    text-align:right!important;
-    justify-self:stretch!important;
-    align-self:center!important;
-  }
-  .shop-product .product-media{
-    grid-column:2!important;
-    grid-row:1!important;
-    width:128px!important;
-    justify-self:end!important;
-  }
-  .shop-product .product-info h3,
-  .shop-product .product-info p,
-  .shop-product .product-info .tag,
-  .shop-product .product-info .price{
-    text-align:right!important;
-    margin-left:0!important;
-    margin-right:0!important;
-  }
-}
-
-
-/* v9.8.133 — página principal: texto realmente a la izquierda y foto a la derecha */
-@media(max-width:700px){
-  .shop-product{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 128px!important;
-    column-gap:4px!important;
-    align-items:center!important;
-    padding-left:0!important;
-    padding-right:0!important;
-  }
-  .shop-product .product-info{
-    grid-column:1!important;
-    grid-row:1!important;
-    width:100%!important;
-    min-width:0!important;
-    margin:0!important;
-    padding:0!important;
-    text-align:left!important;
-    justify-self:stretch!important;
-    align-self:center!important;
-  }
-  .shop-product .product-media{
-    grid-column:2!important;
-    grid-row:1!important;
-    width:128px!important;
-    justify-self:end!important;
-  }
-  .shop-product .product-info h3,
-  .shop-product .product-info p,
-  .shop-product .product-info .tag,
-  .shop-product .product-info .price{
-    text-align:left!important;
-    margin-left:0!important;
-    margin-right:0!important;
-  }
-}
-
-/* v9.8.134 — nombre y precio de productos en azul oscuro ElectroIsla */
-.shop-product .product-info h3,
-.shop-product .product-info .price{
-  color:#074899!important;
-}
-
-/* v9.8.135 — nombre del producto con grosor 600 */
-.shop-product .product-info h3{font-weight:600!important;}
-
-/* v9.8.136 — unidad/categoría de medida: óvalo naranja ElectroIsla, suave */
-.shop-product .tag{
-  display:inline-block!important;
-  width:max-content!important;
-  max-width:100%!important;
-  padding:3px 9px!important;
-  margin:0 0 7px 0!important;
-  border:0!important;
-  border-radius:999px!important;
-  background:#f58220!important;
-  color:#fff!important;
-  font-size:13px!important;
-  line-height:1!important;
-  font-weight:400!important;
-  text-transform:none!important;
-}
-
-/* v9.8.137 — unidad de medida junto al precio, inspirada en la referencia */
-.shop-product .price small{
-  display:inline-block!important;
-  margin-left:5px!important;
-  padding:3px 8px!important;
-  border:0!important;
-  border-radius:999px!important;
-  background:#fff0e6!important;
-  color:#ca6223!important;
-  font-size:10px!important;
-  line-height:1!important;
-  font-weight:500!important;
-  vertical-align:middle!important;
-  white-space:nowrap!important;
-}
-
-/* v9.8.138 — categoría del producto en "Tu pedido": mismo óvalo suave naranja de la referencia */
-@media(max-width:700px){
-  .cart-item .cart-item-category{
-    display:inline-block!important;
-    width:max-content!important;
-    max-width:100%!important;
-    padding:3px 8px!important;
-    border:0!important;
-    border-radius:999px!important;
-    background:#fff0e6!important;
-    color:#ca6223!important;
-    font-weight:400!important;
-    line-height:1!important;
-    white-space:nowrap!important;
-  }
-}
-
-/* v9.8.139 — eliminar la categoría que aparece encima del nombre en la página principal */
-@media(max-width:700px){
-  .shop-product .product-info > .tag,
-  .shop-product .product-info .tag{
-    display:none!important;
+  .sticky-order-btn{
+    min-width:155px !important;
+    padding:13px 18px !important;
+    border-radius:999px !important;
   }
 }
