@@ -10,6 +10,7 @@ const defaultProducts=[
 ];
 let products=JSON.parse(localStorage.getItem("electroisla_products")||"null")||defaultProducts;
 let storeSettings={usd_to_cup:700,transfer_markup_percent:0};
+let categories=[];
 const saveLocal=()=>localStorage.setItem("electroisla_products",JSON.stringify(products));
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const currencySymbols={USD:"$",CUP:"$",EUR:"€"};
@@ -26,6 +27,253 @@ function toRow(p){
 function fromRow(r){
  return {id:String(r.id),name:r.name||"",category:r.category||"Alimentos",price:Number(r.price)||0,currency:r.currency||"USD",discountPrice:r.discount_price===null||r.discount_price===undefined?null:Number(r.discount_price),unit:r.unit||"",image:r.image||"",description:r.description||"",available:r.available!==false};
 }
+
+async function loadCategories(){
+  const {data,error}=await supabaseClient.from("categories").select("*").order("sort_order",{ascending:true}).order("name",{ascending:true});
+  if(error) throw error;
+  categories=data||[];
+  populateCategorySelect();
+  renderCategories();
+}
+
+function populateCategorySelect(){
+  const select=document.getElementById("pCategory");
+  if(!select)return;
+  const current=select.value;
+  const list=categories.filter(c=>c.available!==false);
+  select.innerHTML=list.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+  if(current && [...select.options].some(o=>o.value===current)) select.value=current;
+  else if(select.options.length) select.selectedIndex=0;
+  initCategoryPicker();
+  syncCategoryPicker();
+}
+
+
+function syncCategoryPicker(){
+  const select=document.getElementById("pCategory");
+  const picker=document.getElementById("categoryPicker");
+  const trigger=document.getElementById("categoryPickerTrigger");
+  const valueBox=document.getElementById("categoryPickerValue");
+  const optionsBox=document.getElementById("categoryPickerOptions");
+  if(!select||!picker||!trigger||!valueBox||!optionsBox)return;
+
+  const selected=select.value||"";
+  const selectedText=select.options[select.selectedIndex]?.textContent||"Selecciona una categoría";
+  valueBox.textContent=selectedText;
+
+  optionsBox.innerHTML=[...select.options].map(o=>`
+    <button type="button" class="ei-category-option ${o.value===selected?"selected":""}" role="option" aria-selected="${o.value===selected}" data-value="${esc(o.value)}">
+      <span>${esc(o.textContent)}</span>${o.value===selected?'<span class="ei-category-check">✓</span>':""}
+    </button>`).join("");
+
+  optionsBox.querySelectorAll(".ei-category-option").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      select.value=btn.dataset.value;
+      valueBox.textContent=select.options[select.selectedIndex]?.textContent||btn.dataset.value;
+      picker.classList.remove("open");
+      trigger.setAttribute("aria-expanded","false");
+      syncCategoryPicker();
+      select.dispatchEvent(new Event("change",{bubbles:true}));
+    });
+  });
+}
+function initCategoryPicker(){
+  const picker=document.getElementById("categoryPicker");
+  const trigger=document.getElementById("categoryPickerTrigger");
+  if(!picker||!trigger||trigger.dataset.ready)return;
+  trigger.dataset.ready="1";
+  trigger.addEventListener("click",()=>{
+    const open=!picker.classList.contains("open");
+    picker.classList.toggle("open",open);
+    trigger.setAttribute("aria-expanded",String(open));
+  });
+  document.addEventListener("click",(e)=>{
+    if(!picker.contains(e.target)){
+      picker.classList.remove("open");
+      trigger.setAttribute("aria-expanded","false");
+    }
+  });
+  syncCategoryPicker();
+}
+
+function initFancySelect(selectId,pickerId,triggerId,valueId,optionsId){
+  const select=document.getElementById(selectId), picker=document.getElementById(pickerId), trigger=document.getElementById(triggerId), valueBox=document.getElementById(valueId), box=document.getElementById(optionsId);
+  if(!select||!picker||!trigger||!valueBox||!box||picker.dataset.ready)return;
+  picker.dataset.ready="1";
+  function sync(){
+    const opt=select.options[select.selectedIndex];
+    valueBox.textContent=opt?.textContent||"Selecciona una opción";
+    box.querySelectorAll(".ei-fancy-option").forEach(b=>{const on=b.dataset.value===select.value;b.classList.toggle("selected",on);b.setAttribute("aria-selected",String(on));b.innerHTML=`<span>${esc(b.dataset.label||b.textContent)}</span>${on?'<span class="ei-fancy-check">✓</span>':""}`;});
+  }
+  function build(){
+    box.innerHTML="";
+    [...select.children].forEach(node=>{
+      if(node.tagName==="OPTGROUP"){
+        const h=document.createElement("div");h.className="ei-fancy-group";h.textContent=node.label;box.appendChild(h);
+        [...node.children].forEach(addOption);
+      }else if(node.tagName==="OPTION") addOption(node);
+    });
+    sync();
+  }
+  function addOption(opt){
+    const b=document.createElement("button");b.type="button";b.className="ei-fancy-option";b.dataset.value=opt.value;b.dataset.label=opt.textContent;b.setAttribute("role","option");
+    b.addEventListener("click",()=>{select.value=opt.value;select.dispatchEvent(new Event("change",{bubbles:true}));picker.classList.remove("open");trigger.setAttribute("aria-expanded","false");sync();});
+    box.appendChild(b);
+  }
+  trigger.addEventListener("click",()=>{const open=!picker.classList.contains("open");document.querySelectorAll(".ei-fancy-picker.open,.ei-category-picker.open").forEach(x=>x.classList.remove("open"));picker.classList.toggle("open",open);trigger.setAttribute("aria-expanded",String(open));});
+  select.addEventListener("change",sync);
+  build();
+}
+function syncFancySelects(){
+  ["pCurrency","pUnit"].forEach(id=>{
+    const select=document.getElementById(id);
+    if(select)select.dispatchEvent(new Event("change",{bubbles:true}));
+  });
+  if(typeof syncCategoryPicker==="function")syncCategoryPicker();
+}
+function initAllFancySelects(){
+  initFancySelect("pCurrency","currencyPicker","currencyPickerTrigger","currencyPickerValue","currencyPickerOptions");
+  initFancySelect("pUnit","unitPicker","unitPickerTrigger","unitPickerValue","unitPickerOptions");
+}
+
+function renderCategories(){
+  const box=document.getElementById("categoryList");
+  if(!box)return;
+  if(!categories.length){
+    box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
+    return;
+  }
+  box.innerHTML=categories.map(c=>`
+    <div class="category-item ${c.available?"":"is-hidden"}">
+      <div class="category-info">
+        <div class="category-name">${esc(c.name)}</div>
+        <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
+      </div>
+      <div class="category-actions">
+        <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
+        <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
+        <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
+      </div>
+    </div>`).join("");
+}
+
+function resetCategoryForm(){
+  const form=document.getElementById("categoryForm");
+  if(form)form.reset();
+  const id=document.getElementById("categoryEditId");
+  if(id)id.value="";
+  const available=document.getElementById("categoryAvailable");
+  if(available)available.checked=true;
+  const btn=document.getElementById("saveCategory");
+  if(btn)btn.textContent="➕ Agregar categoría";
+  const cancel=document.getElementById("cancelCategoryEdit");
+  if(cancel)cancel.style.display="none";
+  const status=document.getElementById("categoryEditingStatus");
+  if(status){status.style.display="none";status.textContent="";}
+}
+
+function editCategory(id){
+  const c=categories.find(x=>Number(x.id)===Number(id));
+  if(!c)return;
+  document.getElementById("categoryEditId").value=c.id;
+  document.getElementById("categoryName").value=c.name||"";
+  document.getElementById("categoryAvailable").checked=c.available!==false;
+  document.getElementById("saveCategory").textContent="💾 Guardar categoría";
+  document.getElementById("cancelCategoryEdit").style.display="inline-flex";
+  const status=document.getElementById("categoryEditingStatus");
+  if(status){status.style.display="block";status.textContent=`Editando «${c.name}»`;}
+  document.getElementById("categoryName").focus();
+  document.getElementById("categoryForm").scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+async function saveCategoryRecord(e){
+  e.preventDefault();
+  const name=document.getElementById("categoryName").value.trim();
+  const available=document.getElementById("categoryAvailable").checked;
+  const editId=document.getElementById("categoryEditId").value;
+  if(!name){alert("Escribe el nombre de la categoría.");return}
+
+  const duplicate=categories.find(c=>c.name.trim().toLowerCase()===name.toLowerCase() && String(c.id)!==String(editId));
+  if(duplicate){alert("Ya existe una categoría con ese nombre.");return}
+
+  const btn=document.getElementById("saveCategory");
+  if(btn)btn.disabled=true;
+
+  try{
+    if(editId){
+      const old=categories.find(c=>String(c.id)===String(editId));
+      if(!old)throw new Error("No se encontró la categoría que estás editando.");
+
+      if(old.name!==name){
+        // Primero actualizamos los productos para que no queden apuntando al nombre anterior.
+        const {error:prodErr}=await supabaseClient.from("products").update({category:name}).eq("category",old.name);
+        if(prodErr)throw prodErr;
+      }
+
+      const {error}=await supabaseClient.from("categories").update({
+        name,available,updated_at:new Date().toISOString()
+      }).eq("id",editId);
+      if(error){
+        if(old.name!==name) await supabaseClient.from("products").update({category:old.name}).eq("category",name);
+        throw error;
+      }
+      alert("✅ Categoría actualizada.");
+    }else{
+      const maxOrder=categories.reduce((m,c)=>Math.max(m,Number(c.sort_order)||0),0);
+      const {error}=await supabaseClient.from("categories").insert({
+        name,available,sort_order:maxOrder+1
+      });
+      if(error)throw error;
+      alert("✅ Categoría creada.");
+    }
+
+    resetCategoryForm();
+    await loadCategories();
+    await loadCloud();
+    render();
+    const status=document.getElementById("cloudStatus");
+    if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;
+  }catch(err){
+    alert("No se pudo guardar la categoría en Supabase.\n\n"+(err.message||err));
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
+async function toggleCategory(id){
+  const c=categories.find(x=>Number(x.id)===Number(id));
+  if(!c)return;
+  const next=!c.available;
+  try{
+    const {error}=await supabaseClient.from("categories").update({available:next,updated_at:new Date().toISOString()}).eq("id",id);
+    if(error)throw error;
+    await loadCategories();
+  }catch(err){
+    alert("No se pudo cambiar la visibilidad de la categoría.\n\n"+(err.message||err));
+  }
+}
+
+async function removeCategory(id){
+  const c=categories.find(x=>Number(x.id)===Number(id));
+  if(!c)return;
+  const {count,error:countErr}=await supabaseClient.from("products").select("id",{count:"exact",head:true}).eq("category",c.name);
+  if(countErr){alert("No se pudo comprobar si la categoría tiene productos.\n\n"+(countErr.message||countErr));return}
+  if(Number(count)>0){
+    alert(`No se puede eliminar «${c.name}» porque tiene ${count} producto(s) asociado(s).\n\nPuedes ocultarla o mover esos productos a otra categoría.`);
+    return;
+  }
+  if(!confirm(`¿Eliminar la categoría «${c.name}»?`))return;
+  try{
+    const {error}=await supabaseClient.from("categories").delete().eq("id",id);
+    if(error)throw error;
+    resetCategoryForm();
+    await loadCategories();
+    alert("✅ Categoría eliminada.");
+  }catch(err){
+    alert("No se pudo eliminar la categoría.\n\n"+(err.message||err));
+  }
+}
+
 async function loadSettings(){
  const {data,error}=await supabaseClient.from("store_settings").select("usd_to_cup,transfer_markup_percent").eq("id",1).maybeSingle();
  if(error) throw error;
@@ -57,336 +305,6 @@ async function saveSettings(){
    alert("No se pudo guardar la configuración en Supabase.\n\n"+(err.message||err));
  }finally{if(btn) btn.disabled=false}
 }
-let categoryData=[];
-async function loadCategoriesAdmin(){
- const {data,error}=await supabaseClient.from("categories").select("id,name,sort_order,available").order("sort_order",{ascending:true}).order("name",{ascending:true});
- if(error)throw error;
- categoryData=(data||[]).filter(c=>String(c.name||"").trim()).map(c=>({id:c.id,name:String(c.name).trim(),sort_order:Number(c.sort_order)||0,available:c.available!==false}));
- renderCategoryManagement();
- updateProductCategoryOptions();
- return categoryData;
-}
-function renderCategoryManagement(){
- const box=document.getElementById("categoryManageList"); if(!box)return;
- if(!categoryData.length){box.innerHTML='<p>No hay categorías creadas.</p>';return;}
- box.innerHTML=categoryData.map(c=>`<div class="category-manage-item ${c.available?"":"disabled"}">
-   <div><strong>${esc(c.name)}</strong><small>${c.available?"Visible en la tienda":"Oculta en la tienda"}</small></div>
-   <div class="category-manage-actions"><button type="button" class="category-edit-btn" data-id="${esc(c.id)}">✏️ Editar</button><button type="button" class="category-toggle-btn" data-id="${esc(c.id)}">${c.available?"Ocultar":"Mostrar"}</button></div>
- </div>`).join("");
- box.querySelectorAll(".category-edit-btn").forEach(btn=>btn.onclick=()=>startCategoryEdit(btn.dataset.id));
- box.querySelectorAll(".category-toggle-btn").forEach(btn=>btn.onclick=()=>toggleCategory(btn.dataset.id));
-}
-let adminSelectPickers=new Map();
-function setupAdminSelects(){
- ["pCategory","pCurrency"].forEach(id=>{
-   const select=document.getElementById(id);
-   if(select) createAdminSelectPicker(select);
- });
-}
-function createAdminSelectPicker(select){
- let picker=select.parentElement.querySelector(`.admin-select-picker[data-for="${select.id}"]`);
- if(!picker){
-   picker=document.createElement("div");
-   picker.className="admin-select-picker";
-   picker.dataset.for=select.id;
-   picker.innerHTML=`<button type="button" class="admin-select-trigger" aria-haspopup="listbox" aria-expanded="false"><span class="admin-select-trigger-text"></span><span class="admin-select-chevron">⌄</span></button><div class="admin-select-menu" role="listbox"></div>`;
-   select.insertAdjacentElement("afterend",picker);
- }
- adminSelectPickers.set(select.id,picker);
- const trigger=picker.querySelector(".admin-select-trigger");
- if(!picker.dataset.bound){
-   picker.dataset.bound="1";
-   trigger.addEventListener("click",e=>{
-     e.preventDefault();e.stopPropagation();
-     const open=!picker.classList.contains("open");
-     document.querySelectorAll(".admin-select-picker.open").forEach(x=>{if(x!==picker)closeAdminSelectPicker(x)});
-     picker.classList.toggle("open",open);
-     trigger.setAttribute("aria-expanded",String(open));
-   });
-   picker.querySelector(".admin-select-menu").addEventListener("click",e=>{
-     const option=e.target.closest(".admin-select-option");
-     if(!option)return;
-     e.preventDefault();e.stopPropagation();
-     select.value=option.dataset.value;
-     select.dispatchEvent(new Event("change",{bubbles:true}));
-     syncAdminSelectPicker(select);
-     closeAdminSelectPicker(picker);
-   });
- }
- select.classList.add("admin-native-select");
- renderAdminSelectOptions(select);
- syncAdminSelectPicker(select);
-}
-function renderAdminSelectOptions(select){
- const picker=adminSelectPickers.get(select.id)||select.parentElement.querySelector(`.admin-select-picker[data-for="${select.id}"]`);
- if(!picker)return;
- const menu=picker.querySelector(".admin-select-menu");
- if(!menu)return;
- const parts=[];
- [...select.children].forEach(child=>{
-   if(child.tagName==="OPTGROUP"){
-     parts.push(`<div class="admin-select-group-label">${esc(child.label||"")}</div>`);
-     [...child.options].forEach(o=>parts.push(adminSelectOptionHtml(o)));
-   }else if(child.tagName==="OPTION"){
-     parts.push(adminSelectOptionHtml(child));
-   }
- });
- menu.innerHTML=parts.join("");
-}
-function adminSelectOptionHtml(o){
- return `<button type="button" class="admin-select-option${o.selected?" active":""}" data-value="${esc(o.value)}" role="option" aria-selected="${o.selected}"><span>${esc(o.textContent)}</span></button>`;
-}
-function syncAdminSelectPicker(select){
- const picker=adminSelectPickers.get(select.id);if(!picker)return;
- const trigger=picker.querySelector(".admin-select-trigger"),text=picker.querySelector(".admin-select-trigger-text");
- const option=select.options[select.selectedIndex];
- if(text)text.textContent=option?option.textContent.trim():"Selecciona una opción";
- picker.querySelectorAll(".admin-select-option").forEach(btn=>{
-   const active=btn.dataset.value===select.value;
-   btn.classList.toggle("active",active);btn.setAttribute("aria-selected",String(active));
- });
- if(trigger)trigger.setAttribute("aria-label",option?option.textContent.trim():"Selecciona una opción");
-}
-function refreshAdminSelect(id){
- const select=document.getElementById(id);if(!select)return;
- if(!adminSelectPickers.has(id))createAdminSelectPicker(select);
- else{renderAdminSelectOptions(select);syncAdminSelectPicker(select)}
-}
-function closeAdminSelectPicker(picker){
- picker.classList.remove("open");picker.querySelector(".admin-select-trigger")?.setAttribute("aria-expanded","false");
-}
-document.addEventListener("click",e=>{if(!e.target.closest(".admin-select-picker"))document.querySelectorAll(".admin-select-picker.open").forEach(closeAdminSelectPicker)});
-document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".admin-select-picker.open").forEach(closeAdminSelectPicker)});
-
-function setupUnitPicker(){
- const select=document.getElementById("pUnit");
- const picker=document.getElementById("unitPicker");
- if(!select||!picker)return;
- const trigger=picker.querySelector(".admin-select-trigger");
- const menu=picker.querySelector(".admin-select-menu");
- if(!trigger||!menu)return;
- const render=()=>{
-   const parts=[];
-   [...select.children].forEach(child=>{
-     if(child.tagName==="OPTGROUP"){
-       parts.push(`<div class="admin-select-group-label">${esc(child.label||"")}</div>`);
-       [...child.options].forEach(o=>parts.push(adminSelectOptionHtml(o)));
-     }else if(child.tagName==="OPTION") parts.push(adminSelectOptionHtml(child));
-   });
-   menu.innerHTML=parts.join("");
- };
- const sync=()=>{
-   const option=select.options[select.selectedIndex];
-   const text=picker.querySelector(".admin-select-trigger-text");
-   if(text)text.textContent=option?option.textContent.trim():"Selecciona una unidad o presentación";
-   menu.querySelectorAll(".admin-select-option").forEach(btn=>{
-     const active=btn.dataset.value===select.value;
-     btn.classList.toggle("active",active);
-     btn.setAttribute("aria-selected",String(active));
-   });
- };
- if(!picker.dataset.bound){
-   picker.dataset.bound="1";
-   trigger.addEventListener("click",e=>{
-     e.preventDefault();e.stopPropagation();
-     const open=!picker.classList.contains("open");
-     document.querySelectorAll(".admin-select-picker.open").forEach(x=>{if(x!==picker)closeAdminSelectPicker(x)});
-     picker.classList.toggle("open",open);
-     trigger.setAttribute("aria-expanded",String(open));
-   });
-   menu.addEventListener("click",e=>{
-     const option=e.target.closest(".admin-select-option");
-     if(!option)return;
-     e.preventDefault();e.stopPropagation();
-     select.value=option.dataset.value;
-     select.dispatchEvent(new Event("change",{bubbles:true}));
-     sync();
-     closeAdminSelectPicker(picker);
-   });
- }
- select.classList.add("admin-native-select");
- render();
- sync();
-}
-
-function updateProductCategoryOptions(selected){
- const select=document.getElementById("pCategory"); if(!select)return;
- const current=selected!==undefined?String(selected):String(select.value||"");
- const visible=categoryData.filter(c=>c.available);
- select.innerHTML=visible.length?visible.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join(""):'<option value="">Crea una categoría primero</option>';
- refreshAdminSelect("pCategory");
- if(visible.some(c=>c.name===current))select.value=current;
- else if(visible.length)select.value=visible[0].name;
- syncAdminSelectPicker(select);
-}
-function resetCategoryForm(){
- const id=document.getElementById("categoryEditId"),name=document.getElementById("categoryName"),btn=document.getElementById("saveCategory"),cancel=document.getElementById("cancelCategoryEdit");
- if(id)id.value="";if(name)name.value="";if(btn)btn.textContent="➕ Agregar categoría";if(cancel)cancel.classList.add("hidden");
-}
-function startCategoryEdit(id){
- const c=categoryData.find(x=>String(x.id)===String(id));if(!c)return;
- document.getElementById("categoryEditId").value=c.id;document.getElementById("categoryName").value=c.name;
- document.getElementById("saveCategory").textContent="💾 Guardar cambios";document.getElementById("cancelCategoryEdit").classList.remove("hidden");
- document.getElementById("categoryName").focus();
-}
-async function saveCategoryForm(e){
- e.preventDefault();
- const id=document.getElementById("categoryEditId").value.trim();
- const name=document.getElementById("categoryName").value.trim().replace(/\s+/g," ");
- const status=document.getElementById("categoryManageStatus"),btn=document.getElementById("saveCategory");
- if(!name){alert("Escribe el nombre de la categoría.");return}
- const duplicate=categoryData.find(c=>c.name.toLowerCase()===name.toLowerCase()&&String(c.id)!==String(id));
- if(duplicate){alert("Ya existe una categoría con ese nombre.");return}
- if(btn)btn.disabled=true;if(status)status.textContent="☁️ Guardando…";
- try{
-   if(id){
-     const old=categoryData.find(c=>String(c.id)===String(id));
-     if(!old)throw new Error("No se encontró la categoría.");
-     const {error}=await supabaseClient.from("categories").update({name}).eq("id",id);if(error)throw error;
-     if(old.name!==name){
-       const {error:prodErr}=await supabaseClient.from("products").update({category:name}).eq("category",old.name);
-       if(prodErr)throw prodErr;
-     }
-     if(status)status.textContent="✅ Categoría actualizada";
-   }else{
-     const next=Math.max(0,...categoryData.map(c=>Number(c.sort_order)||0))+1;
-     const {error}=await supabaseClient.from("categories").insert({name,sort_order:next,available:true});if(error)throw error;
-     if(status)status.textContent="✅ Categoría agregada";
-   }
-   resetCategoryForm();await loadCategoriesAdmin();await loadCategoryOrder();
- }catch(err){if(status)status.textContent="⚠️ No se pudo guardar";alert("No se pudo guardar la categoría en Supabase.\n\n"+(err.message||err));}
- finally{if(btn)btn.disabled=false}
-}
-async function toggleCategory(id){
- const c=categoryData.find(x=>String(x.id)===String(id));if(!c)return;
- const next=!c.available;
- try{
-   const {error}=await supabaseClient.from("categories").update({available:next}).eq("id",id);if(error)throw error;
-   await loadCategoriesAdmin();await loadCategoryOrder();
- }catch(err){alert("No se pudo actualizar la categoría.\n\n"+(err.message||err));}
-}
-
-let categoryOrder=[];
-let categoryDragIndex=null;
-let categoryDragPointerId=null;
-
-async function loadCategoryOrder(){
- const box=document.getElementById("categoryOrderList"),status=document.getElementById("categoryOrderStatus");
- try{
-  const {data,error}=await supabaseClient.from("categories").select("id,name,sort_order,available").order("sort_order",{ascending:true}).order("name",{ascending:true});
-  if(error)throw error;
-  categoryOrder=(data||[]).filter(c=>String(c.name||"").trim()).map(c=>({id:c.id,name:String(c.name).trim(),sort_order:Number(c.sort_order)||0,available:c.available!==false}));
-  renderCategoryOrder();
-  if(status)status.textContent=`☁️ ${categoryOrder.length} categorías cargadas`;
- }catch(err){
-  if(box)box.innerHTML="<p>⚠️ No se pudieron cargar las categorías.</p>";
-  if(status)status.textContent="⚠️ Error al cargar";
-  console.error(err);
- }
-}
-
-function renderCategoryOrder(){
- const box=document.getElementById("categoryOrderList"); if(!box)return;
- if(!categoryOrder.length){box.innerHTML="<p>No hay categorías creadas.</p>";return;}
- box.innerHTML=categoryOrder.map((c,i)=>`<div class="category-order-item ${c.available?"":"disabled"}" data-index="${i}" tabindex="0" role="listitem" aria-label="${esc(c.name)}, posición ${i+1}">
-   <button type="button" class="category-drag-handle" data-index="${i}" aria-label="Arrastrar ${esc(c.name)} para cambiar su posición" title="Arrastrar para cambiar de posición">⠿</button>
-   <span class="category-order-position">${i+1}</span>
-   <div class="category-order-info"><strong>${esc(c.name)}</strong><small>${c.available?"Visible en la tienda":"Oculta en la tienda"}</small></div>
- </div>`).join("");
- attachCategoryDrag();
-}
-
-function moveCategory(from,to){
- if(from===to||from<0||to<0||from>=categoryOrder.length||to>=categoryOrder.length)return;
- const moved=categoryOrder.splice(from,1)[0];
- categoryOrder.splice(to,0,moved);
-}
-
-function renderCategoryOrder(){
- const box=document.getElementById("categoryOrderList"); if(!box)return;
- if(!categoryOrder.length){box.innerHTML="<p>No hay categorías creadas.</p>";return;}
- box.innerHTML=categoryOrder.map((c,i)=>`<div class="category-order-item ${c.available?"":"disabled"}" data-index="${i}" tabindex="0" role="listitem" aria-label="${esc(c.name)}, posición ${i+1}">
-   <button type="button" class="category-drag-handle" data-index="${i}" aria-label="Arrastrar ${esc(c.name)} para cambiar su posición" title="Arrastrar para cambiar de posición">⠿</button>
-   <span class="category-order-position">${i+1}</span>
-   <div class="category-order-info"><strong>${esc(c.name)}</strong><small>${c.available?"Visible en la tienda":"Oculta en la tienda"}</small></div>
- </div>`).join("");
- attachCategoryDrag();
-}
-
-function attachCategoryDrag(){
- const box=document.getElementById("categoryOrderList"); if(!box)return;
- let dragIndex=null, pointerId=null, draggingItem=null;
- const stop=e=>{
-   if(pointerId===null || (e && e.pointerId!==pointerId))return;
-   draggingItem?.classList.remove("dragging");
-   dragIndex=null; pointerId=null; draggingItem=null;
-   document.removeEventListener("pointermove",onMove);
-   document.removeEventListener("pointerup",stop);
-   document.removeEventListener("pointercancel",stop);
-   renderCategoryOrder();
- };
- const onMove=e=>{
-   if(pointerId!==e.pointerId || dragIndex===null)return;
-   const items=[...box.querySelectorAll(".category-order-item")];
-   const current=items[dragIndex];
-   if(!current)return;
-   const y=e.clientY;
-   let target=dragIndex;
-   items.forEach((item,i)=>{
-     if(i===dragIndex)return;
-     const r=item.getBoundingClientRect();
-     if(y>r.top+r.height/2)target=i;
-   });
-   if(target!==dragIndex){
-     const moved=categoryOrder[dragIndex];
-     const ref=target>dragIndex?items[target].nextSibling:items[target];
-     if(ref)box.insertBefore(current,ref);else box.appendChild(current);
-     moveCategory(dragIndex,target);
-     dragIndex=target;
-     [...box.querySelectorAll(".category-order-item")].forEach((item,i)=>{
-       item.dataset.index=i;
-       const pos=item.querySelector(".category-order-position");
-       if(pos)pos.textContent=i+1;
-     });
-     const status=document.getElementById("categoryOrderStatus");
-     if(status)status.textContent="✏️ Orden modificado · pulsa Guardar orden";
-   }
-   e.preventDefault();
- };
- box.querySelectorAll(".category-drag-handle").forEach(handle=>{
-   handle.addEventListener("pointerdown",e=>{
-     if(e.pointerType==="mouse" && e.button!==0)return;
-     dragIndex=Number(handle.dataset.index); pointerId=e.pointerId;
-     draggingItem=handle.closest(".category-order-item");
-     draggingItem?.classList.add("dragging");
-     handle.setPointerCapture?.(e.pointerId);
-     document.addEventListener("pointermove",onMove,{passive:false});
-     document.addEventListener("pointerup",stop);
-     document.addEventListener("pointercancel",stop);
-     e.preventDefault();
-   });
- });
-}
-
-async function saveCategoryOrder(){
- const btn=document.getElementById("saveCategoryOrder"),status=document.getElementById("categoryOrderStatus");
- if(!categoryOrder.length)return;
- if(btn)btn.disabled=true;if(status)status.textContent="☁️ Guardando orden…";
- const old=categoryOrder.map(c=>({...c}));
- try{
-  for(let i=0;i<categoryOrder.length;i++){
-   const {error}=await supabaseClient.from("categories").update({sort_order:i+1}).eq("id",categoryOrder[i].id);
-   if(error)throw error;
-   categoryOrder[i].sort_order=i+1;
-  }
-  if(status)status.textContent="✅ Orden guardado y sincronizado con la tienda";
- }catch(err){
-  categoryOrder=old;renderCategoryOrder();
-  if(status)status.textContent="⚠️ No se pudo guardar el orden";
-  alert("No se pudo guardar el orden de las categorías en Supabase.\n\n"+(err.message||err));
- }finally{if(btn)btn.disabled=false}
-}
-
 async function loadCloud(){
  const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});
  if(error) throw error;
@@ -432,8 +350,7 @@ async function show(){
  if(status) status.textContent="☁️ Conectando con Supabase…";
  try{
    await loadSettings();
-   await loadCategoriesAdmin();
-   await loadCategoryOrder();
+   await loadCategories();
    const source=await loadCloud();
    render();
    if(status) status.textContent=source==="cloud"?`☁️ Sincronizado con Supabase · ${products.length} productos`:source==="migrated"?`☁️ Catálogo local enviado a Supabase · ${products.length} productos`:"☁️ Supabase conectado · catálogo vacío";
@@ -451,13 +368,12 @@ function render(){
 function edit(id){
  const p=products.find(x=>x.id===id);if(!p)return;
  document.getElementById("editId").value=p.id;document.getElementById("pName").value=p.name;
- updateProductCategoryOptions(p.category);document.getElementById("pCategory").value=p.category;document.getElementById("pPrice").value=p.price;document.getElementById("pCurrency").value=p.currency||"USD";document.getElementById("pDiscountPrice").value=p.discountPrice??"";
+ document.getElementById("pCategory").value=p.category;document.getElementById("pPrice").value=p.price;document.getElementById("pCurrency").value=p.currency||"USD";document.getElementById("pDiscountPrice").value=p.discountPrice??"";
  const unitOptions=[...document.getElementById("pUnit").options].map(o=>o.value);
  if(unitOptions.includes(p.unit||"")){document.getElementById("pUnit").value=p.unit||"";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";}
  else{document.getElementById("pUnit").value="__otra__";document.getElementById("pUnitCustom").value=p.unit||"";document.getElementById("pUnitCustom").style.display="block";}
- syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));setupUnitPicker();
  document.getElementById("pImage").value=p.image||"";document.getElementById("pDescription").value=p.description||"";document.getElementById("pAvailable").checked=p.available!==false;
- document.getElementById("formTitle").textContent="✏️ Editar producto";showPreview(p.image||"");scrollTo(0,0)
+ document.getElementById("formTitle").textContent="✏️ Editar producto";syncFancySelects();showPreview(p.image||"");scrollTo(0,0)
 }
 async function toggle(id){
  const p=products.find(x=>x.id===id);if(!p)return;
@@ -485,7 +401,12 @@ function compressImage(file){
 const picker=document.getElementById("pImageFile");
 picker.addEventListener("change",async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const status=document.getElementById("photoStatus");status.textContent="Leyendo la foto…";try{const data=await compressImage(file);document.getElementById("pImage").value=data;showPreview(data);status.textContent="✅ Foto cargada. Ahora pulsa «Guardar producto»."}catch(err){document.getElementById("pImage").value="";document.getElementById("imagePreview").innerHTML="";status.textContent="❌ No se pudo cargar la foto.";alert(err.message||"No se pudo cargar la foto.")}finally{picker.value=""}});
 
-document.getElementById("pUnit").addEventListener("change",()=>{const other=document.getElementById("pUnit").value==="__otra__";document.getElementById("pUnitCustom").style.display=other?"block":"none";if(!other)document.getElementById("pUnitCustom").value="";setupUnitPicker()});
+
+initAllFancySelects();
+document.getElementById("categoryForm").addEventListener("submit",saveCategoryRecord);
+document.getElementById("cancelCategoryEdit").onclick=resetCategoryForm;
+
+document.getElementById("pUnit").addEventListener("change",()=>{const other=document.getElementById("pUnit").value==="__otra__";document.getElementById("pUnitCustom").style.display=other?"block":"none";if(!other)document.getElementById("pUnitCustom").value=""});
 
 document.getElementById("productForm").addEventListener("submit",async e=>{
  e.preventDefault();
@@ -499,22 +420,22 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
  const id=document.getElementById("editId").value;const old=[...products];if(id)products=products.map(x=>x.id===id?p:x);else products.push(p);saveLocal();render();
  try{await cloudUpsert(p);reset();render();const status=document.getElementById("cloudStatus");if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;alert("✅ Producto guardado y sincronizado en la nube.")}catch(err){products=old;saveLocal();render();alert("No se pudo guardar en Supabase. El cambio local fue revertido.\n\n"+(err.message||err))}
 });
-function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));setupUnitPicker();showPreview("")}
+function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncFancySelects();showPreview("")}
 document.getElementById("cancelEdit").onclick=reset;
-document.getElementById("categoryForm").addEventListener("submit",saveCategoryForm);
-document.getElementById("cancelCategoryEdit").onclick=resetCategoryForm;
 document.getElementById("saveSettings").onclick=saveSettings;
-document.getElementById("saveCategoryOrder").onclick=saveCategoryOrder;
 document.getElementById("loginBtn").onclick=login;
 document.getElementById("refreshCloud").onclick=async()=>{
  const status=document.getElementById("cloudStatus");
  if(status)status.textContent="☁️ Actualizando…";
- try{await loadSettings();await loadCategoriesAdmin();await loadCategoryOrder();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
+ try{await loadSettings();await loadCategories();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
  catch(err){if(status)status.textContent="⚠️ "+(err.message||err);alert("No se pudo actualizar el catálogo.\n\n"+(err.message||err));}
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
-setupAdminSelects();setupUnitPicker();
 (async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
-supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoriesAdmin();await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("settings-admin").on("postgres_changes",{event:"*",schema:"public",table:"store_settings"},async()=>{try{await loadSettings()}catch(e){console.warn(e)}}).subscribe();
+
+supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{
+  try{await loadCategories()}catch(e){console.warn(e)}
+}).subscribe();
+

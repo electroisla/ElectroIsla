@@ -3615,31 +3615,57 @@ body.cart-open-lock{
 }
 
 
-/* =========================================================
-   ELECTROISLA — AJUSTE FINAL DE LA TIENDA
-   Recupera la apariencia acordada sin tocar la lógica de Supabase.
-   ========================================================= */
-/* Productos de la página principal */
-.shop-product .product-info{min-width:0}
-.shop-product h3{font-size:15px!important;font-weight:600!important;color:#072b79!important;line-height:1.15!important;margin:0!important}
-.shop-product p{font-size:12px!important;font-weight:400!important;line-height:1.2!important}
-.shop-product .tag{display:none!important}
-.shop-product .price{font-size:15px!important;font-weight:600!important;color:#072b79!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;flex-wrap:wrap!important}
-.shop-product .price .discount-price{font-size:15px!important;font-weight:600!important;color:#072b79!important}
-.shop-product .price .old-price{font-size:12px!important}
-.shop-product .price small{font-size:11px!important;font-weight:600!important;color:#f58220!important;background:#fff1e8!important;border-radius:999px!important;padding:3px 8px!important;margin:0!important;white-space:nowrap!important}
-.product-category-pill{display:inline-flex!important;align-items:center!important;min-height:20px!important;font-size:10.5px!important;font-weight:600!important;color:#f58220!important;background:#fff1e8!important;border-radius:999px!important;padding:3px 8px!important;white-space:nowrap!important}
-.shop-product .product-info{padding-right:5px!important}
+/* ElectroIsla — Enviar pedido por WhatsApp: mismo estilo visual de unidad de medida */
+.btn.primary.full[type="submit"]{
+  background:#fff1e8 !important;
+  color:#ff7600 !important;
+  border-radius:999px !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:hover,
+.btn.primary.full[type="submit"]:focus-visible{
+  background:#ffe5d6 !important;
+  color:#f56e00 !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:active{
+  background:#ffdfd0 !important;
+  color:#f56e00 !important;
+  transform:scale(.98);
+}
 
-/* Carrito / Ver mi pedido */
-.cart-item .cart-item-category{display:inline-flex!important;align-items:center!important;width:max-content!important;max-width:100%!important;color:#f58220!important;background:#fff1e8!important;border:0!important;border-radius:999px!important;padding:3px 8px!important;font-size:10px!important;font-weight:600!important;box-shadow:none!important;margin-top:4px!important}
-.cart-item .cart-item-top > strong{font-size:11px!important;line-height:1.1!important;font-weight:600!important;color:#072b79!important}
-.cart-item .cart-item-main > small{font-size:8.5px!important;line-height:1.1!important;font-weight:400!important}
-.cart-item .cart-line-total{font-size:12px!important;line-height:1.1!important;font-weight:600!important;color:#072b79!important}
-.cart-item .qty b{font-size:12px!important;line-height:1!important;font-weight:600!important}
-.cart-item{border-bottom:0!important}
-.cart-item .cart-remove{color:#d71920!important;background:transparent!important;border:0!important;font-size:16px!important;box-shadow:none!important}
+/* ElectroIsla — eliminar cuadro azul al seleccionar botones */
+button:focus,
+button:focus-visible{
+  outline:none !important;
+  box-shadow:none !important;
+}
 
-/* Sin cuadro azul al tocar botones */
-button,button:focus,button:focus-visible,button:active{outline:none!important;-webkit-tap-highlight-color:transparent}
-.cart-item .qty>button:focus,.cart-item .qty>button:focus-visible,.cart-item .qty>button:active{box-shadow:none!important;outline:none!important}
+
+/* ElectroIsla — eliminar también el resaltado azul táctil del navegador */
+button,
+a,
+input,
+select,
+textarea{
+  -webkit-tap-highlight-color: transparent !important;
+  tap-highlight-color: transparent !important;
+}
+
+button:focus,
+button:focus-visible,
+button:active{
+  outline: none !important;
+}
+
+/* ElectroIsla — categoría/unidad junto al precio: estilo naranja suave */
+.shop-product .price small{
+  display:inline-block!important;
+  color:#f58220!important;
+  background:#fff1e8!important;
+  border-radius:999px!important;
+  padding:3px 8px!important;
+  font-weight:600!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
