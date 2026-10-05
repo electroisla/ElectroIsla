@@ -137,25 +137,118 @@ function initAllFancySelects(){
   initFancySelect("salesPeriod","salesPeriodPicker","salesPeriodPickerTrigger","salesPeriodPickerValue","salesPeriodPickerOptions");
 }
 
+let categoryOrderSaving=false;
+let categoryOrderPendingRefresh=false;
+
+function categoryIdArg(id){
+  return JSON.stringify(String(id));
+}
+
 function renderCategories(){
   const box=document.getElementById("categoryList");
   if(!box)return;
+  categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0)||String(a.name||"").localeCompare(String(b.name||""),"es",{sensitivity:"base"}));
   if(!categories.length){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map(c=>`
-    <div class="category-item ${c.available?"":"is-hidden"}">
+  box.innerHTML=categories.map((c,index)=>`
+    <div class="category-item ${c.available?"":"is-hidden"}" draggable="true" data-category-id="${esc(c.id)}">
+      <button type="button" class="category-drag" title="Arrastra para cambiar el orden" aria-label="Arrastrar categoría">⋮⋮</button>
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
       </div>
+      <div class="category-order" aria-label="Orden de la categoría">
+        <button type="button" class="category-move" title="Subir" aria-label="Subir categoría" ${index===0?"disabled":""} onclick="moveCategory(${categoryIdArg(c.id)},-1)">↑</button>
+        <button type="button" class="category-move" title="Bajar" aria-label="Bajar categoría" ${index===categories.length-1?"disabled":""} onclick="moveCategory(${categoryIdArg(c.id)},1)">↓</button>
+      </div>
       <div class="category-actions">
-        <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
-        <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
-        <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
+        <button type="button" class="btn secondary" onclick="editCategory(${categoryIdArg(c.id)})">✏️ Editar</button>
+        <button type="button" class="btn secondary" onclick="toggleCategory(${categoryIdArg(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
+        <button type="button" class="btn secondary" onclick="removeCategory(${categoryIdArg(c.id)})">🗑️</button>
       </div>
     </div>`).join("");
+  initCategoryOrdering();
+}
+
+function initCategoryOrdering(){
+  const box=document.getElementById("categoryList");
+  if(!box)return;
+  box.querySelectorAll(".category-item").forEach(item=>{
+    item.addEventListener("dragstart",e=>{
+      if(categoryOrderSaving)return;
+      item.classList.add("is-dragging");
+      e.dataTransfer.effectAllowed="move";
+      e.dataTransfer.setData("text/plain",item.dataset.categoryId);
+    });
+    item.addEventListener("dragend",()=>item.classList.remove("is-dragging"));
+    item.addEventListener("dragover",e=>{
+      e.preventDefault();
+      const dragging=box.querySelector(".category-item.is-dragging");
+      if(!dragging||dragging===item)return;
+      const rect=item.getBoundingClientRect();
+      const after=e.clientY>rect.top+rect.height/2;
+      box.insertBefore(dragging,after?item.nextSibling:item);
+    });
+    item.addEventListener("drop",async e=>{
+      e.preventDefault();
+      await persistRenderedCategoryOrder();
+    });
+  });
+}
+
+function getRenderedCategoryIds(){
+  return [...document.querySelectorAll("#categoryList .category-item")].map(el=>String(el.dataset.categoryId));
+}
+
+async function persistRenderedCategoryOrder(){
+  const ids=getRenderedCategoryIds();
+  if(ids.length!==categories.length)return;
+  const previous=categories.map(c=>({id:String(c.id),sort_order:Number(c.sort_order)||0}));
+  ids.forEach((id,index)=>{
+    const c=categories.find(x=>String(x.id)===id);
+    if(c)c.sort_order=index+1;
+  });
+  categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+  renderCategories();
+  await saveCategoryOrder(previous);
+}
+
+async function saveCategoryOrder(previous){
+  if(categoryOrderSaving)return;
+  categoryOrderSaving=true;
+  try{
+    const updates=categories.map((c,index)=>supabaseClient.from("categories").update({sort_order:index+1}).eq("id",c.id));
+    const results=await Promise.all(updates);
+    const failed=results.find(r=>r.error);
+    if(failed)throw failed.error;
+  }catch(err){
+    previous.forEach(p=>{const c=categories.find(x=>String(x.id)===p.id);if(c)c.sort_order=p.sort_order});
+    categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+    renderCategories();
+    alert("No se pudo guardar el nuevo orden de las categorías en Supabase.\n\n"+(err.message||err));
+  }finally{
+    categoryOrderSaving=false;
+    if(categoryOrderPendingRefresh){
+      categoryOrderPendingRefresh=false;
+      loadCategories().catch(e=>console.warn(e));
+    }
+  }
+}
+
+async function moveCategory(id,direction){
+  if(categoryOrderSaving)return;
+  const list=[...categories].sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+  const index=list.findIndex(c=>String(c.id)===String(id));
+  const target=index+Number(direction);
+  if(index<0||target<0||target>=list.length)return;
+  const previous=list.map((c,i)=>({id:String(c.id),sort_order:Number(c.sort_order)||i+1}));
+  [list[index],list[target]]=[list[target],list[index]];
+  list.forEach((c,i)=>c.sort_order=i+1);
+  categories=list;
+  renderCategories();
+  await saveCategoryOrder(previous);
 }
 
 function resetCategoryForm(){
@@ -490,6 +583,7 @@ supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema
 supabaseClient.channel("settings-admin").on("postgres_changes",{event:"*",schema:"public",table:"store_settings"},async()=>{try{await loadSettings()}catch(e){console.warn(e)}}).subscribe();
 
 supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{
+  if(categoryOrderSaving){categoryOrderPendingRefresh=true;return;}
   try{await loadCategories()}catch(e){console.warn(e)}
 }).subscribe();
 
