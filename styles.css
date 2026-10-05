@@ -1251,3 +1251,24 @@ body.category-menu-open{
  .category-drag-handle{width:38px;height:38px}
  .category-order-position{width:28px;height:28px}
 }
+
+/* ELECTROISLA ADMIN — NARANJA COMO COLOR PRINCIPAL */
+.admin-page{
+  --accent:var(--orange)!important;
+  --accent2:#d96710!important;
+  --warm:#fff4e8!important;
+}
+.admin-page .eyebrow,
+.admin-page a:not(.btn),
+.admin-page h1 span,
+.admin-page h2 span{color:var(--orange)}
+.admin-page .topbar .brand span:last-child span{color:var(--orange)!important}
+.admin-page .btn.primary,
+.admin-page .primary{background:var(--orange)!important;color:#fff!important}
+.admin-page .btn.primary:hover,
+.admin-page .primary:hover{background:#d96710!important}
+.admin-page .check input:checked{accent-color:var(--orange)}
+.admin-page input[type="checkbox"]:focus,
+.admin-page input[type="radio"]:focus{accent-color:var(--orange)}
+.admin-page .admin-actions button:active,
+.admin-page .btn:active{transform:translateY(1px)}
