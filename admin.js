@@ -57,6 +57,80 @@ async function saveSettings(){
    alert("No se pudo guardar la configuración en Supabase.\n\n"+(err.message||err));
  }finally{if(btn) btn.disabled=false}
 }
+let categoryData=[];
+async function loadCategoriesAdmin(){
+ const {data,error}=await supabaseClient.from("categories").select("id,name,sort_order,available").order("sort_order",{ascending:true}).order("name",{ascending:true});
+ if(error)throw error;
+ categoryData=(data||[]).filter(c=>String(c.name||"").trim()).map(c=>({id:c.id,name:String(c.name).trim(),sort_order:Number(c.sort_order)||0,available:c.available!==false}));
+ renderCategoryManagement();
+ updateProductCategoryOptions();
+ return categoryData;
+}
+function renderCategoryManagement(){
+ const box=document.getElementById("categoryManageList"); if(!box)return;
+ if(!categoryData.length){box.innerHTML='<p>No hay categorías creadas.</p>';return;}
+ box.innerHTML=categoryData.map(c=>`<div class="category-manage-item ${c.available?"":"disabled"}">
+   <div><strong>${esc(c.name)}</strong><small>${c.available?"Visible en la tienda":"Oculta en la tienda"}</small></div>
+   <div class="category-manage-actions"><button type="button" class="category-edit-btn" data-id="${esc(c.id)}">✏️ Editar</button><button type="button" class="category-toggle-btn" data-id="${esc(c.id)}">${c.available?"Ocultar":"Mostrar"}</button></div>
+ </div>`).join("");
+ box.querySelectorAll(".category-edit-btn").forEach(btn=>btn.onclick=()=>startCategoryEdit(btn.dataset.id));
+ box.querySelectorAll(".category-toggle-btn").forEach(btn=>btn.onclick=()=>toggleCategory(btn.dataset.id));
+}
+function updateProductCategoryOptions(selected){
+ const select=document.getElementById("pCategory"); if(!select)return;
+ const current=selected!==undefined?String(selected):String(select.value||"");
+ const visible=categoryData.filter(c=>c.available);
+ select.innerHTML=visible.length?visible.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join(""):'<option value="">Crea una categoría primero</option>';
+ if(visible.some(c=>c.name===current))select.value=current;
+ else if(visible.length)select.value=visible[0].name;
+}
+function resetCategoryForm(){
+ const id=document.getElementById("categoryEditId"),name=document.getElementById("categoryName"),btn=document.getElementById("saveCategory"),cancel=document.getElementById("cancelCategoryEdit");
+ if(id)id.value="";if(name)name.value="";if(btn)btn.textContent="➕ Agregar categoría";if(cancel)cancel.classList.add("hidden");
+}
+function startCategoryEdit(id){
+ const c=categoryData.find(x=>String(x.id)===String(id));if(!c)return;
+ document.getElementById("categoryEditId").value=c.id;document.getElementById("categoryName").value=c.name;
+ document.getElementById("saveCategory").textContent="💾 Guardar cambios";document.getElementById("cancelCategoryEdit").classList.remove("hidden");
+ document.getElementById("categoryName").focus();
+}
+async function saveCategoryForm(e){
+ e.preventDefault();
+ const id=document.getElementById("categoryEditId").value.trim();
+ const name=document.getElementById("categoryName").value.trim().replace(/\s+/g," ");
+ const status=document.getElementById("categoryManageStatus"),btn=document.getElementById("saveCategory");
+ if(!name){alert("Escribe el nombre de la categoría.");return}
+ const duplicate=categoryData.find(c=>c.name.toLowerCase()===name.toLowerCase()&&String(c.id)!==String(id));
+ if(duplicate){alert("Ya existe una categoría con ese nombre.");return}
+ if(btn)btn.disabled=true;if(status)status.textContent="☁️ Guardando…";
+ try{
+   if(id){
+     const old=categoryData.find(c=>String(c.id)===String(id));
+     if(!old)throw new Error("No se encontró la categoría.");
+     const {error}=await supabaseClient.from("categories").update({name}).eq("id",id);if(error)throw error;
+     if(old.name!==name){
+       const {error:prodErr}=await supabaseClient.from("products").update({category:name}).eq("category",old.name);
+       if(prodErr)throw prodErr;
+     }
+     if(status)status.textContent="✅ Categoría actualizada";
+   }else{
+     const next=Math.max(0,...categoryData.map(c=>Number(c.sort_order)||0))+1;
+     const {error}=await supabaseClient.from("categories").insert({name,sort_order:next,available:true});if(error)throw error;
+     if(status)status.textContent="✅ Categoría agregada";
+   }
+   resetCategoryForm();await loadCategoriesAdmin();await loadCategoryOrder();
+ }catch(err){if(status)status.textContent="⚠️ No se pudo guardar";alert("No se pudo guardar la categoría en Supabase.\n\n"+(err.message||err));}
+ finally{if(btn)btn.disabled=false}
+}
+async function toggleCategory(id){
+ const c=categoryData.find(x=>String(x.id)===String(id));if(!c)return;
+ const next=!c.available;
+ try{
+   const {error}=await supabaseClient.from("categories").update({available:next}).eq("id",id);if(error)throw error;
+   await loadCategoriesAdmin();await loadCategoryOrder();
+ }catch(err){alert("No se pudo actualizar la categoría.\n\n"+(err.message||err));}
+}
+
 let categoryOrder=[];
 let categoryDragIndex=null;
 let categoryDragPointerId=null;
@@ -223,6 +297,7 @@ async function show(){
  if(status) status.textContent="☁️ Conectando con Supabase…";
  try{
    await loadSettings();
+   await loadCategoriesAdmin();
    await loadCategoryOrder();
    const source=await loadCloud();
    render();
@@ -241,7 +316,7 @@ function render(){
 function edit(id){
  const p=products.find(x=>x.id===id);if(!p)return;
  document.getElementById("editId").value=p.id;document.getElementById("pName").value=p.name;
- document.getElementById("pCategory").value=p.category;document.getElementById("pPrice").value=p.price;document.getElementById("pCurrency").value=p.currency||"USD";document.getElementById("pDiscountPrice").value=p.discountPrice??"";
+ updateProductCategoryOptions(p.category);document.getElementById("pCategory").value=p.category;document.getElementById("pPrice").value=p.price;document.getElementById("pCurrency").value=p.currency||"USD";document.getElementById("pDiscountPrice").value=p.discountPrice??"";
  const unitOptions=[...document.getElementById("pUnit").options].map(o=>o.value);
  if(unitOptions.includes(p.unit||"")){document.getElementById("pUnit").value=p.unit||"";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";}
  else{document.getElementById("pUnit").value="__otra__";document.getElementById("pUnitCustom").value=p.unit||"";document.getElementById("pUnitCustom").style.display="block";}
@@ -290,17 +365,19 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
 });
 function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";showPreview("")}
 document.getElementById("cancelEdit").onclick=reset;
+document.getElementById("categoryForm").addEventListener("submit",saveCategoryForm);
+document.getElementById("cancelCategoryEdit").onclick=resetCategoryForm;
 document.getElementById("saveSettings").onclick=saveSettings;
 document.getElementById("saveCategoryOrder").onclick=saveCategoryOrder;
 document.getElementById("loginBtn").onclick=login;
 document.getElementById("refreshCloud").onclick=async()=>{
  const status=document.getElementById("cloudStatus");
  if(status)status.textContent="☁️ Actualizando…";
- try{await loadSettings();await loadCategoryOrder();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
+ try{await loadSettings();await loadCategoriesAdmin();await loadCategoryOrder();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
  catch(err){if(status)status.textContent="⚠️ "+(err.message||err);alert("No se pudo actualizar el catálogo.\n\n"+(err.message||err));}
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
 (async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
-supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
+supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoriesAdmin();await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("settings-admin").on("postgres_changes",{event:"*",schema:"public",table:"store_settings"},async()=>{try{await loadSettings()}catch(e){console.warn(e)}}).subscribe();

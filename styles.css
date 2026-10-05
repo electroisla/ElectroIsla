@@ -1272,3 +1272,23 @@ body.category-menu-open{
 .admin-page input[type="radio"]:focus{accent-color:var(--orange)}
 .admin-page .admin-actions button:active,
 .admin-page .btn:active{transform:translateY(1px)}
+
+/* Gestión de categorías — interfaz PRO */
+.category-manage-card{margin:24px 0!important;border-top:4px solid var(--orange)!important;background:linear-gradient(180deg,#fff 0%,#fffaf6 100%)!important}
+.category-manage-card h2{margin:0 0 6px}
+.category-manage-form{margin-top:14px}
+.category-manage-form label{display:block;font-weight:700;color:var(--ink);font-size:13px}
+.category-manage-form input{width:100%;margin-top:7px}
+.category-manage-list{display:flex;flex-direction:column;gap:9px;margin-top:18px}
+.category-manage-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 13px;border:1px solid #e9e4df;border-radius:14px;background:#fff}
+.category-manage-item:hover{border-color:#ffc18e;box-shadow:0 7px 18px rgba(245,130,32,.07)}
+.category-manage-item.disabled{opacity:.58}
+.category-manage-item strong{display:block;color:#102b4d;font-size:14px}
+.category-manage-item small{display:block;margin-top:4px;color:#8a7464;font-size:11px}
+.category-manage-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.category-manage-actions button{border:1px solid #ffd8bd;background:#fff8f2;color:#bd5912;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer}
+.category-manage-actions button:hover{background:#fff0e4;border-color:#ffc18e}
+@media(max-width:700px){
+ .category-manage-item{align-items:flex-start;flex-direction:column}
+ .category-manage-actions{width:100%;justify-content:flex-start}
+}

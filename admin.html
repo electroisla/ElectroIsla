@@ -35,6 +35,17 @@
 <div class="row settings-actions"><button type="button" class="btn primary" id="saveSettings">💾 Guardar configuración</button><span id="settingsStatus" class="settings-status">☁️ Cargando configuración…</span></div>
 </section>
 
+<section class="admin-card category-manage-card">
+<h2>🏷️ Gestionar categorías</h2>
+<p class="settings-help">Agrega nuevas categorías o edita las existentes. Los cambios se sincronizan con la tienda.</p>
+<form id="categoryForm" class="category-manage-form">
+<input type="hidden" id="categoryEditId">
+<label>Nombre de la categoría<input id="categoryName" required maxlength="60" placeholder="Ej. Alimentos"></label>
+<div class="row settings-actions"><button type="submit" class="btn primary" id="saveCategory">➕ Agregar categoría</button><button type="button" class="btn secondary hidden" id="cancelCategoryEdit">Cancelar</button><span id="categoryManageStatus" class="settings-status"></span></div>
+</form>
+<div id="categoryManageList" class="category-manage-list"><p>☁️ Cargando categorías…</p></div>
+</section>
+
 <section class="admin-card category-order-card">
 <h2>📂 Orden de categorías en la tienda</h2>
 <p class="settings-help">Cambia la posición en que aparecen las categorías en la barra de la tienda.</p>
