@@ -143,18 +143,98 @@ function renderCategories(){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map(c=>`
+  box.innerHTML=categories.map((c,i)=>`
     <div class="category-item ${c.available?"":"is-hidden"}">
+      <div class="category-drag" title="Arrastra para cambiar de posición" draggable="true" data-id="${esc(c.id)}">☷</div>
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
       </div>
+      <div class="category-order">
+        <button type="button" class="btn secondary category-move" ${i===0?"disabled":""} onclick="moveCategory(${Number(c.id)},-1)" aria-label="Subir categoría">↑</button>
+        <button type="button" class="btn secondary category-move" ${i===categories.length-1?"disabled":""} onclick="moveCategory(${Number(c.id)},1)" aria-label="Bajar categoría">↓</button>
+      </div>
       <div class="category-actions">
-        <button type="button" class="btn secondary" onclick="editCategory('${esc(c.id)}')">✏️ Editar</button>
-        <button type="button" class="btn secondary" onclick="toggleCategory('${esc(c.id)}')">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
-        <button type="button" class="btn secondary" onclick="removeCategory('${esc(c.id)}')">🗑️</button>
+        <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
+        <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
+        <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
       </div>
     </div>`).join("");
+  initCategoryReorder();
+}
+
+async function persistCategoryOrder(){
+  const updates=categories.map((c,i)=>({id:c.id,sort_order:i+1}));
+  for(const item of updates){
+    const {error}=await supabaseClient.from("categories").update({sort_order:item.sort_order}).eq("id",item.id);
+    if(error)throw error;
+  }
+}
+
+async function moveCategory(id,direction){
+  const index=categories.findIndex(c=>Number(c.id)===Number(id));
+  const target=index+direction;
+  if(index<0||target<0||target>=categories.length)return;
+  const old=categories.map(c=>({...c}));
+  [categories[index],categories[target]]=[categories[target],categories[index]];
+  categories.forEach((c,i)=>c.sort_order=i+1);
+  renderCategories();
+  try{
+    await persistCategoryOrder();
+  }catch(err){
+    categories=old;
+    renderCategories();
+    alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));
+  }
+}
+
+function initCategoryReorder(){
+  const box=document.getElementById("categoryList");
+  if(!box||box.dataset.reorderReady)return;
+  box.dataset.reorderReady="1";
+  let draggedId=null;
+  box.addEventListener("dragstart",e=>{
+    const handle=e.target.closest(".category-drag");
+    if(!handle)return;
+    draggedId=String(handle.dataset.id);
+    const item=handle.closest(".category-item");
+    if(item)item.classList.add("category-dragging");
+    e.dataTransfer.effectAllowed="move";
+    e.dataTransfer.setData("text/plain",draggedId);
+  });
+  box.addEventListener("dragend",e=>{
+    const item=e.target.closest(".category-item");
+    if(item)item.classList.remove("category-dragging");
+    draggedId=null;
+  });
+  box.addEventListener("dragover",e=>{
+    if(!draggedId)return;
+    const item=e.target.closest(".category-item");
+    if(!item)return;
+    e.preventDefault();
+    item.classList.add("category-drag-over");
+  });
+  box.addEventListener("dragleave",e=>{
+    const item=e.target.closest(".category-item");
+    if(item&&!item.contains(e.relatedTarget))item.classList.remove("category-drag-over");
+  });
+  box.addEventListener("drop",async e=>{
+    const item=e.target.closest(".category-item");
+    if(!item||!draggedId)return;
+    e.preventDefault();
+    item.classList.remove("category-drag-over");
+    const targetId=String(item.querySelector(".category-drag")?.dataset.id||"");
+    if(!targetId||targetId===draggedId)return;
+    const from=categories.findIndex(c=>String(c.id)===draggedId);
+    const to=categories.findIndex(c=>String(c.id)===targetId);
+    if(from<0||to<0)return;
+    const old=categories.map(c=>({...c}));
+    const [moved]=categories.splice(from,1);
+    categories.splice(to,0,moved);
+    categories.forEach((c,i)=>c.sort_order=i+1);
+    renderCategories();
+    try{await persistCategoryOrder()}catch(err){categories=old;renderCategories();alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));}
+  });
 }
 
 function resetCategoryForm(){
@@ -173,7 +253,7 @@ function resetCategoryForm(){
 }
 
 function editCategory(id){
-  const c=categories.find(x=>String(x.id)===String(id));
+  const c=categories.find(x=>Number(x.id)===Number(id));
   if(!c)return;
   document.getElementById("categoryEditId").value=c.id;
   document.getElementById("categoryName").value=c.name||"";
@@ -241,7 +321,7 @@ async function saveCategoryRecord(e){
 }
 
 async function toggleCategory(id){
-  const c=categories.find(x=>String(x.id)===String(id));
+  const c=categories.find(x=>Number(x.id)===Number(id));
   if(!c)return;
   const next=!c.available;
   try{
@@ -254,7 +334,7 @@ async function toggleCategory(id){
 }
 
 async function removeCategory(id){
-  const c=categories.find(x=>String(x.id)===String(id));
+  const c=categories.find(x=>Number(x.id)===Number(id));
   if(!c)return;
   const {count,error:countErr}=await supabaseClient.from("products").select("id",{count:"exact",head:true}).eq("category",c.name);
   if(countErr){alert("No se pudo comprobar si la categoría tiene productos.\n\n"+(countErr.message||countErr));return}
