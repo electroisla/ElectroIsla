@@ -3614,9 +3614,29 @@ body.cart-open-lock{
   color:#f58220 !important;
 }
 
-/* ElectroIsla — unidad de medida: solo estilo visual */
-.shop-product .price small{
+
+/* ElectroIsla — Enviar pedido por WhatsApp: mismo estilo visual de unidad de medida */
+.btn.primary.full[type="submit"]{
   background:#fff1e8 !important;
   color:#ff7600 !important;
   border-radius:999px !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:hover,
+.btn.primary.full[type="submit"]:focus-visible{
+  background:#ffe5d6 !important;
+  color:#f56e00 !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:active{
+  background:#ffdfd0 !important;
+  color:#f56e00 !important;
+  transform:scale(.98);
+}
+
+/* ElectroIsla — eliminar cuadro azul al seleccionar botones */
+button:focus,
+button:focus-visible{
+  outline:none !important;
+  box-shadow:none !important;
 }
