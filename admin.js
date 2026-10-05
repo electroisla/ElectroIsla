@@ -117,13 +117,30 @@ function renderAdminSelectOptions(select){
  const picker=adminSelectPickers.get(select.id)||select.parentElement.querySelector(`.admin-select-picker[data-for="${select.id}"]`);
  if(!picker)return;
  const menu=picker.querySelector(".admin-select-menu");
+ if(!menu)return;
  const parts=[];
  [...select.children].forEach(child=>{
    if(child.tagName==="OPTGROUP"){
      parts.push(`<div class="admin-select-group-label">${esc(child.label||"")}</div>`);
      [...child.options].forEach(o=>parts.push(adminSelectOptionHtml(o)));
-   }else if(child.tagName==="OPTION") parts.push(adminSelectOptionHtml(child));
+   }else if(child.tagName==="OPTION"){
+     parts.push(adminSelectOptionHtml(child));
+   }
  });
+ // Seguridad: si alguna unidad/presentación no quedó en el DOM del select,
+ // reconstruimos únicamente el selector de unidades sin tocar los datos del producto.
+ if(select.id==="pUnit" && !parts.some(x=>x.includes('data-value="kg"'))){
+   const units=[
+    ["⚖️ Peso",[["mg","Miligramo (mg)"],["g","Gramo (g)"],["oz","Onza (oz)"],["lb","Libra (lb)"],["½ lb","Media libra (½ lb)"],["kg","Kilogramo (kg)"],["t","Tonelada (t)"]]],
+    ["🥤 Volumen",[["ml","Mililitro (ml)"],["L","Litro (L)"],["galón","Galón"],["fl oz","Onza líquida (fl oz)"]]],
+    ["📦 Cantidad / presentación",[["unidad","Unidad"],["pieza","Pieza"],["par","Par"],["½ docena","Media docena"],["docena","Docena"],["paquete","Paquete"],["caja","Caja"],["bolsa","Bolsa"],["saco","Saco"],["bulto","Bulto"],["bandeja","Bandeja"],["cartón","Cartón"],["lata","Lata"],["botella","Botella"],["frasco","Frasco"],["envase","Envase"],["tarro","Tarro"],["rollo","Rollo"],["blíster","Blíster"],["kit","Kit"],["combo","Combo"]]],
+    ["📏 Longitud",[["cm","Centímetro (cm)"],["m","Metro (m)"]]]
+   ];
+   parts.length=0;
+   parts.push(adminSelectOptionHtml({value:"",textContent:"Selecciona una unidad o presentación",selected:select.value===""}));
+   units.forEach(([label,items])=>{parts.push(`<div class="admin-select-group-label">${esc(label)}</div>`);items.forEach(([value,text])=>parts.push(adminSelectOptionHtml({value,textContent:text,selected:select.value===value})));});
+   parts.push(adminSelectOptionHtml({value:"__otra__",textContent:"Otra...",selected:select.value==="__otra__"}));
+ }
  menu.innerHTML=parts.join("");
 }
 function adminSelectOptionHtml(o){

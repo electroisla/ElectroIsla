@@ -1389,3 +1389,8 @@ body.category-menu-open{
   .admin-select-trigger{min-height:50px}
   .admin-select-option{padding:10px 9px}
 }
+
+/* Corrección puntual: selector de Unidad / presentación */
+#pUnit + .admin-select-picker{display:block!important;width:100%;z-index:30!important}
+#pUnit + .admin-select-picker .admin-select-menu{z-index:120!important;min-height:40px}
+#pUnit + .admin-select-picker.open .admin-select-menu{display:block!important;visibility:visible!important;opacity:1!important}
