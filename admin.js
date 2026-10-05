@@ -134,121 +134,27 @@ function syncFancySelects(){
 function initAllFancySelects(){
   initFancySelect("pCurrency","currencyPicker","currencyPickerTrigger","currencyPickerValue","currencyPickerOptions");
   initFancySelect("pUnit","unitPicker","unitPickerTrigger","unitPickerValue","unitPickerOptions");
-  initFancySelect("salesPeriod","salesPeriodPicker","salesPeriodPickerTrigger","salesPeriodPickerValue","salesPeriodPickerOptions");
-}
-
-let categoryOrderSaving=false;
-let categoryOrderPendingRefresh=false;
-
-function categoryIdArg(id){
-  return JSON.stringify(String(id));
 }
 
 function renderCategories(){
   const box=document.getElementById("categoryList");
   if(!box)return;
-  categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0)||String(a.name||"").localeCompare(String(b.name||""),"es",{sensitivity:"base"}));
   if(!categories.length){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map((c,index)=>`
-    <div class="category-item ${c.available?"":"is-hidden"}" draggable="true" data-category-id="${esc(c.id)}">
-      <button type="button" class="category-drag" title="Arrastra para cambiar el orden" aria-label="Arrastrar categoría">⋮⋮</button>
+  box.innerHTML=categories.map(c=>`
+    <div class="category-item ${c.available?"":"is-hidden"}">
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
       </div>
-      <div class="category-order" aria-label="Orden de la categoría">
-        <button type="button" class="category-move" title="Subir" aria-label="Subir categoría" ${index===0?"disabled":""} onclick="moveCategory(${categoryIdArg(c.id)},-1)">↑</button>
-        <button type="button" class="category-move" title="Bajar" aria-label="Bajar categoría" ${index===categories.length-1?"disabled":""} onclick="moveCategory(${categoryIdArg(c.id)},1)">↓</button>
-      </div>
       <div class="category-actions">
-        <button type="button" class="btn secondary" onclick="editCategory(${categoryIdArg(c.id)})">✏️ Editar</button>
-        <button type="button" class="btn secondary" onclick="toggleCategory(${categoryIdArg(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
-        <button type="button" class="btn secondary" onclick="removeCategory(${categoryIdArg(c.id)})">🗑️</button>
+        <button type="button" class="btn secondary" onclick="editCategory('${esc(c.id)}')">✏️ Editar</button>
+        <button type="button" class="btn secondary" onclick="toggleCategory('${esc(c.id)}')">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
+        <button type="button" class="btn secondary" onclick="removeCategory('${esc(c.id)}')">🗑️</button>
       </div>
     </div>`).join("");
-  initCategoryOrdering();
-}
-
-function initCategoryOrdering(){
-  const box=document.getElementById("categoryList");
-  if(!box)return;
-  box.querySelectorAll(".category-item").forEach(item=>{
-    item.addEventListener("dragstart",e=>{
-      if(categoryOrderSaving)return;
-      item.classList.add("is-dragging");
-      e.dataTransfer.effectAllowed="move";
-      e.dataTransfer.setData("text/plain",item.dataset.categoryId);
-    });
-    item.addEventListener("dragend",()=>item.classList.remove("is-dragging"));
-    item.addEventListener("dragover",e=>{
-      e.preventDefault();
-      const dragging=box.querySelector(".category-item.is-dragging");
-      if(!dragging||dragging===item)return;
-      const rect=item.getBoundingClientRect();
-      const after=e.clientY>rect.top+rect.height/2;
-      box.insertBefore(dragging,after?item.nextSibling:item);
-    });
-    item.addEventListener("drop",async e=>{
-      e.preventDefault();
-      await persistRenderedCategoryOrder();
-    });
-  });
-}
-
-function getRenderedCategoryIds(){
-  return [...document.querySelectorAll("#categoryList .category-item")].map(el=>String(el.dataset.categoryId));
-}
-
-async function persistRenderedCategoryOrder(){
-  const ids=getRenderedCategoryIds();
-  if(ids.length!==categories.length)return;
-  const previous=categories.map(c=>({id:String(c.id),sort_order:Number(c.sort_order)||0}));
-  ids.forEach((id,index)=>{
-    const c=categories.find(x=>String(x.id)===id);
-    if(c)c.sort_order=index+1;
-  });
-  categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
-  renderCategories();
-  await saveCategoryOrder(previous);
-}
-
-async function saveCategoryOrder(previous){
-  if(categoryOrderSaving)return;
-  categoryOrderSaving=true;
-  try{
-    const updates=categories.map((c,index)=>supabaseClient.from("categories").update({sort_order:index+1}).eq("id",c.id));
-    const results=await Promise.all(updates);
-    const failed=results.find(r=>r.error);
-    if(failed)throw failed.error;
-  }catch(err){
-    previous.forEach(p=>{const c=categories.find(x=>String(x.id)===p.id);if(c)c.sort_order=p.sort_order});
-    categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
-    renderCategories();
-    alert("No se pudo guardar el nuevo orden de las categorías en Supabase.\n\n"+(err.message||err));
-  }finally{
-    categoryOrderSaving=false;
-    if(categoryOrderPendingRefresh){
-      categoryOrderPendingRefresh=false;
-      loadCategories().catch(e=>console.warn(e));
-    }
-  }
-}
-
-async function moveCategory(id,direction){
-  if(categoryOrderSaving)return;
-  const list=[...categories].sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
-  const index=list.findIndex(c=>String(c.id)===String(id));
-  const target=index+Number(direction);
-  if(index<0||target<0||target>=list.length)return;
-  const previous=list.map((c,i)=>({id:String(c.id),sort_order:Number(c.sort_order)||i+1}));
-  [list[index],list[target]]=[list[target],list[index]];
-  list.forEach((c,i)=>c.sort_order=i+1);
-  categories=list;
-  renderCategories();
-  await saveCategoryOrder(previous);
 }
 
 function resetCategoryForm(){
@@ -267,7 +173,7 @@ function resetCategoryForm(){
 }
 
 function editCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
+  const c=categories.find(x=>String(x.id)===String(id));
   if(!c)return;
   document.getElementById("categoryEditId").value=c.id;
   document.getElementById("categoryName").value=c.name||"";
@@ -335,7 +241,7 @@ async function saveCategoryRecord(e){
 }
 
 async function toggleCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
+  const c=categories.find(x=>String(x.id)===String(id));
   if(!c)return;
   const next=!c.available;
   try{
@@ -348,7 +254,7 @@ async function toggleCategory(id){
 }
 
 async function removeCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
+  const c=categories.find(x=>String(x.id)===String(id));
   if(!c)return;
   const {count,error:countErr}=await supabaseClient.from("products").select("id",{count:"exact",head:true}).eq("category",c.name);
   if(countErr){alert("No se pudo comprobar si la categoría tiene productos.\n\n"+(countErr.message||countErr));return}
@@ -515,61 +421,8 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
  try{await cloudUpsert(p);reset();render();const status=document.getElementById("cloudStatus");if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;alert("✅ Producto guardado y sincronizado en la nube.")}catch(err){products=old;saveLocal();render();alert("No se pudo guardar en Supabase. El cambio local fue revertido.\n\n"+(err.message||err))}
 });
 function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncFancySelects();showPreview("")}
-
-async function loadSalesReport(){
- const status=document.getElementById("salesStatus"),summary=document.getElementById("salesSummary"),rows=document.getElementById("salesRows"),top=document.getElementById("topProducts"),payments=document.getElementById("paymentSales"),cats=document.getElementById("categorySales"),daily=document.getElementById("dailySales");
- if(!status||!summary||!rows||!top||!payments)return;
- status.textContent="☁️ Cargando ventas…";
- try{
-  const period=document.getElementById("salesPeriod")?.value||"30";
-  let query=supabaseClient.from("orders").select("id,created_at,customer_name,payment_method,currency,total,status,items").order("created_at",{ascending:false});
-  if(period!=="all"){
-   const d=new Date();
-   if(period==="today")d.setHours(0,0,0,0);else d.setDate(d.getDate()-Number(period));
-   query=query.gte("created_at",d.toISOString());
-  }
-  const {data,error}=await query;
-  if(error)throw error;
-  const orders=data||[];
-  const usdTotal=orders.filter(o=>(o.currency||"USD")==="USD").reduce((a,o)=>a+Number(o.total||0),0);
-  const cupTotal=orders.filter(o=>(o.currency||"USD")==="CUP").reduce((a,o)=>a+Number(o.total||0),0);
-  const count=orders.length;
-  const avg=count?orders.reduce((a,o)=>a+Number(o.total||0),0)/count:0;
-  summary.innerHTML=`<div class="sales-kpi"><small>Total USD</small><strong>${moneyAdmin(usdTotal,"USD")}</strong></div><div class="sales-kpi"><small>Total CUP</small><strong>${moneyAdmin(cupTotal,"CUP")}</strong></div><div class="sales-kpi"><small>Pedidos · promedio</small><strong>${count} · $${avg.toFixed(2)}</strong></div>`;
-  const prod=new Map(),pay=new Map(),cat=new Map(),day=new Map();
-  orders.forEach(o=>{
-   const cur=o.currency||"USD";
-   const method=(o.payment_method||"OTRO")+" · "+cur;
-   pay.set(method,(pay.get(method)||0)+Number(o.total||0));
-   const items=Array.isArray(o.items)?o.items:[];
-   items.forEach(i=>{const key=i.name||"Producto";prod.set(key,(prod.get(key)||0)+Number(i.qty||0));const ck=(i.category||"Sin categoría")+" · "+cur;cat.set(ck,(cat.get(ck)||0)+Number(i.line_total||0));});
-   const dateKey=new Date(o.created_at).toLocaleDateString();
-   day.set(dateKey,(day.get(dateKey)||0)+Number(o.total||0));
-  });
-  const prodList=[...prod.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8);
-  top.innerHTML=prodList.length?prodList.map(([n,q])=>`<div class="sales-list-row"><span>${esc(n)}</span><strong>${q}</strong></div>`).join(""):"<div class='sales-empty'>No hay ventas en este período.</div>";
-  const catList=[...cat.entries()].sort((a,b)=>b[1]-a[1]);
-  cats.innerHTML=catList.length?catList.map(([n,v])=>`<div class="sales-list-row"><span>${esc(n)}</span><strong>${moneyAdmin(v,"USD")}</strong></div>`).join(""):"<div class='sales-empty'>No hay ventas en este período.</div>";
-  const dayList=[...day.entries()].sort((a,b)=>new Date(a[0])-new Date(b[0]));
-  daily.innerHTML=dayList.length?dayList.slice(-14).map(([d,v])=>`<div class="sales-list-row"><span>${esc(d)}</span><strong>${moneyAdmin(v,"USD/CUP")}</strong></div>`).join(""):"<div class='sales-empty'>No hay ventas en este período.</div>";
-  const payList=[...pay.entries()].sort((a,b)=>b[1]-a[1]);
-  payments.innerHTML=payList.length?payList.map(([m,v])=>`<div class="sales-list-row"><span>${esc(m)}</span><strong>${moneyAdmin(v)}</strong></div>`).join(""):"<div class='sales-empty'>No hay ventas en este período.</div>";
-  rows.innerHTML=orders.length?orders.map(o=>`<tr><td>${new Date(o.created_at).toLocaleString()}</td><td>${esc(o.customer_name||"—")}</td><td>${esc(o.payment_method||"—")}</td><td>${moneyAdmin(o.total,o.currency)}</td><td>${esc(o.status||"sent")}</td></tr>`).join(""):"<tr><td colspan='5' class='sales-empty'>No hay pedidos registrados.</td></tr>";
-  status.textContent=`☁️ ${count} pedido(s) · actualizado ${new Date().toLocaleTimeString()}`;
- }catch(err){status.textContent="⚠️ No se pudo cargar el reporte";summary.innerHTML="";rows.innerHTML="<tr><td colspan='5' class='sales-empty'>Revisa que la tabla de pedidos esté disponible.</td></tr>";console.warn(err)}
-}
-
-async function exportSalesCsv(){
- try{const {data,error}=await supabaseClient.from("orders").select("created_at,customer_name,customer_phone,delivery_zone,payment_method,currency,subtotal,delivery_fee,total,status,items").order("created_at",{ascending:false});if(error)throw error;const head=["Fecha","Cliente","Teléfono","Zona","Pago","Moneda","Subtotal","Domicilio","Total","Estado","Productos"];const escCsv=v=>`"${String(v??"").replace(/"/g,'""')}"`;const lines=[head.map(escCsv).join(",")];(data||[]).forEach(o=>lines.push([new Date(o.created_at).toLocaleString(),o.customer_name,o.customer_phone,o.delivery_zone,o.payment_method,o.currency,o.subtotal,o.delivery_fee,o.total,o.status,(Array.isArray(o.items)?o.items:[]).map(i=>`${i.name} x${i.qty}`).join(" | ")].map(escCsv).join(",")));const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`electroisla-ventas-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)}catch(e){alert("No se pudo exportar el reporte.\n\n"+(e.message||e))}
-}
-
-function moneyAdmin(v,c){const n=Number(v||0);return `${c==="CUP"?"$":"$"}${n.toFixed(2)} ${c||"USD"}`}
-
 document.getElementById("cancelEdit").onclick=reset;
 document.getElementById("saveSettings").onclick=saveSettings;
-document.getElementById("refreshSales")?.addEventListener("click",loadSalesReport);
-document.getElementById("exportSales")?.addEventListener("click",async()=>{await exportSalesCsv()});
-document.getElementById("salesPeriod")?.addEventListener("change",loadSalesReport);
 document.getElementById("loginBtn").onclick=login;
 document.getElementById("refreshCloud").onclick=async()=>{
  const status=document.getElementById("cloudStatus");
@@ -578,15 +431,11 @@ document.getElementById("refreshCloud").onclick=async()=>{
  catch(err){if(status)status.textContent="⚠️ "+(err.message||err);alert("No se pudo actualizar el catálogo.\n\n"+(err.message||err));}
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
-(async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session){await show();await loadSalesReport()}})();
+(async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("settings-admin").on("postgres_changes",{event:"*",schema:"public",table:"store_settings"},async()=>{try{await loadSettings()}catch(e){console.warn(e)}}).subscribe();
 
 supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{
-  if(categoryOrderSaving){categoryOrderPendingRefresh=true;return;}
   try{await loadCategories()}catch(e){console.warn(e)}
 }).subscribe();
 
-
-
-supabaseClient.channel("orders-admin").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>{loadSalesReport()}).subscribe();
