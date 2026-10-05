@@ -1310,7 +1310,8 @@ body.category-menu-open{
   margin:0 !important;
   padding:0 !important;
 }
-.admin-select-picker{position:relative;margin-top:7px;z-index:10}
+.admin-select-picker{position:relative;margin-top:7px;z-index:50}
+.admin-select-picker.open{z-index:10000!important}
 .admin-select-trigger{
   width:100%;
   min-height:52px;
@@ -1394,3 +1395,12 @@ body.category-menu-open{
 #pUnit + .admin-select-picker{display:block!important;width:100%;z-index:30!important}
 #pUnit + .admin-select-picker .admin-select-menu{z-index:120!important;min-height:40px}
 #pUnit + .admin-select-picker.open .admin-select-menu{display:block!important;visibility:visible!important;opacity:1!important}
+
+
+/* Corrección puntual: las listas abiertas deben quedar por encima de los campos siguientes. */
+.admin-page .admin-grid #pCategory + .admin-select-picker.open,
+.admin-page .admin-grid #pCurrency + .admin-select-picker.open,
+.admin-page .admin-grid #pUnit + .admin-select-picker.open{z-index:10000!important}
+.admin-page .admin-grid #pCategory + .admin-select-picker.open .admin-select-menu,
+.admin-page .admin-grid #pCurrency + .admin-select-picker.open .admin-select-menu,
+.admin-page .admin-grid #pUnit + .admin-select-picker.open .admin-select-menu{z-index:10001!important}
