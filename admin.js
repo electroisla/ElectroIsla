@@ -10,7 +10,6 @@ const defaultProducts=[
 ];
 let products=JSON.parse(localStorage.getItem("electroisla_products")||"null")||defaultProducts;
 let storeSettings={usd_to_cup:700,transfer_markup_percent:0};
-let categories=[];
 const saveLocal=()=>localStorage.setItem("electroisla_products",JSON.stringify(products));
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const currencySymbols={USD:"$",CUP:"$",EUR:"€"};
@@ -27,253 +26,6 @@ function toRow(p){
 function fromRow(r){
  return {id:String(r.id),name:r.name||"",category:r.category||"Alimentos",price:Number(r.price)||0,currency:r.currency||"USD",discountPrice:r.discount_price===null||r.discount_price===undefined?null:Number(r.discount_price),unit:r.unit||"",image:r.image||"",description:r.description||"",available:r.available!==false};
 }
-
-async function loadCategories(){
-  const {data,error}=await supabaseClient.from("categories").select("*").order("sort_order",{ascending:true}).order("name",{ascending:true});
-  if(error) throw error;
-  categories=data||[];
-  populateCategorySelect();
-  renderCategories();
-}
-
-function populateCategorySelect(){
-  const select=document.getElementById("pCategory");
-  if(!select)return;
-  const current=select.value;
-  const list=categories.filter(c=>c.available!==false);
-  select.innerHTML=list.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
-  if(current && [...select.options].some(o=>o.value===current)) select.value=current;
-  else if(select.options.length) select.selectedIndex=0;
-  initCategoryPicker();
-  syncCategoryPicker();
-}
-
-
-function syncCategoryPicker(){
-  const select=document.getElementById("pCategory");
-  const picker=document.getElementById("categoryPicker");
-  const trigger=document.getElementById("categoryPickerTrigger");
-  const valueBox=document.getElementById("categoryPickerValue");
-  const optionsBox=document.getElementById("categoryPickerOptions");
-  if(!select||!picker||!trigger||!valueBox||!optionsBox)return;
-
-  const selected=select.value||"";
-  const selectedText=select.options[select.selectedIndex]?.textContent||"Selecciona una categoría";
-  valueBox.textContent=selectedText;
-
-  optionsBox.innerHTML=[...select.options].map(o=>`
-    <button type="button" class="ei-category-option ${o.value===selected?"selected":""}" role="option" aria-selected="${o.value===selected}" data-value="${esc(o.value)}">
-      <span>${esc(o.textContent)}</span>${o.value===selected?'<span class="ei-category-check">✓</span>':""}
-    </button>`).join("");
-
-  optionsBox.querySelectorAll(".ei-category-option").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      select.value=btn.dataset.value;
-      valueBox.textContent=select.options[select.selectedIndex]?.textContent||btn.dataset.value;
-      picker.classList.remove("open");
-      trigger.setAttribute("aria-expanded","false");
-      syncCategoryPicker();
-      select.dispatchEvent(new Event("change",{bubbles:true}));
-    });
-  });
-}
-function initCategoryPicker(){
-  const picker=document.getElementById("categoryPicker");
-  const trigger=document.getElementById("categoryPickerTrigger");
-  if(!picker||!trigger||trigger.dataset.ready)return;
-  trigger.dataset.ready="1";
-  trigger.addEventListener("click",()=>{
-    const open=!picker.classList.contains("open");
-    picker.classList.toggle("open",open);
-    trigger.setAttribute("aria-expanded",String(open));
-  });
-  document.addEventListener("click",(e)=>{
-    if(!picker.contains(e.target)){
-      picker.classList.remove("open");
-      trigger.setAttribute("aria-expanded","false");
-    }
-  });
-  syncCategoryPicker();
-}
-
-function initFancySelect(selectId,pickerId,triggerId,valueId,optionsId){
-  const select=document.getElementById(selectId), picker=document.getElementById(pickerId), trigger=document.getElementById(triggerId), valueBox=document.getElementById(valueId), box=document.getElementById(optionsId);
-  if(!select||!picker||!trigger||!valueBox||!box||picker.dataset.ready)return;
-  picker.dataset.ready="1";
-  function sync(){
-    const opt=select.options[select.selectedIndex];
-    valueBox.textContent=opt?.textContent||"Selecciona una opción";
-    box.querySelectorAll(".ei-fancy-option").forEach(b=>{const on=b.dataset.value===select.value;b.classList.toggle("selected",on);b.setAttribute("aria-selected",String(on));b.innerHTML=`<span>${esc(b.dataset.label||b.textContent)}</span>${on?'<span class="ei-fancy-check">✓</span>':""}`;});
-  }
-  function build(){
-    box.innerHTML="";
-    [...select.children].forEach(node=>{
-      if(node.tagName==="OPTGROUP"){
-        const h=document.createElement("div");h.className="ei-fancy-group";h.textContent=node.label;box.appendChild(h);
-        [...node.children].forEach(addOption);
-      }else if(node.tagName==="OPTION") addOption(node);
-    });
-    sync();
-  }
-  function addOption(opt){
-    const b=document.createElement("button");b.type="button";b.className="ei-fancy-option";b.dataset.value=opt.value;b.dataset.label=opt.textContent;b.setAttribute("role","option");
-    b.addEventListener("click",()=>{select.value=opt.value;select.dispatchEvent(new Event("change",{bubbles:true}));picker.classList.remove("open");trigger.setAttribute("aria-expanded","false");sync();});
-    box.appendChild(b);
-  }
-  trigger.addEventListener("click",()=>{const open=!picker.classList.contains("open");document.querySelectorAll(".ei-fancy-picker.open,.ei-category-picker.open").forEach(x=>x.classList.remove("open"));picker.classList.toggle("open",open);trigger.setAttribute("aria-expanded",String(open));});
-  select.addEventListener("change",sync);
-  build();
-}
-function syncFancySelects(){
-  ["pCurrency","pUnit"].forEach(id=>{
-    const select=document.getElementById(id);
-    if(select)select.dispatchEvent(new Event("change",{bubbles:true}));
-  });
-  if(typeof syncCategoryPicker==="function")syncCategoryPicker();
-}
-function initAllFancySelects(){
-  initFancySelect("pCurrency","currencyPicker","currencyPickerTrigger","currencyPickerValue","currencyPickerOptions");
-  initFancySelect("pUnit","unitPicker","unitPickerTrigger","unitPickerValue","unitPickerOptions");
-}
-
-function renderCategories(){
-  const box=document.getElementById("categoryList");
-  if(!box)return;
-  if(!categories.length){
-    box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
-    return;
-  }
-  box.innerHTML=categories.map(c=>`
-    <div class="category-item ${c.available?"":"is-hidden"}">
-      <div class="category-info">
-        <div class="category-name">${esc(c.name)}</div>
-        <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
-      </div>
-      <div class="category-actions">
-        <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
-        <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
-        <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
-      </div>
-    </div>`).join("");
-}
-
-function resetCategoryForm(){
-  const form=document.getElementById("categoryForm");
-  if(form)form.reset();
-  const id=document.getElementById("categoryEditId");
-  if(id)id.value="";
-  const available=document.getElementById("categoryAvailable");
-  if(available)available.checked=true;
-  const btn=document.getElementById("saveCategory");
-  if(btn)btn.textContent="➕ Agregar categoría";
-  const cancel=document.getElementById("cancelCategoryEdit");
-  if(cancel)cancel.style.display="none";
-  const status=document.getElementById("categoryEditingStatus");
-  if(status){status.style.display="none";status.textContent="";}
-}
-
-function editCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
-  if(!c)return;
-  document.getElementById("categoryEditId").value=c.id;
-  document.getElementById("categoryName").value=c.name||"";
-  document.getElementById("categoryAvailable").checked=c.available!==false;
-  document.getElementById("saveCategory").textContent="💾 Guardar categoría";
-  document.getElementById("cancelCategoryEdit").style.display="inline-flex";
-  const status=document.getElementById("categoryEditingStatus");
-  if(status){status.style.display="block";status.textContent=`Editando «${c.name}»`;}
-  document.getElementById("categoryName").focus();
-  document.getElementById("categoryForm").scrollIntoView({behavior:"smooth",block:"center"});
-}
-
-async function saveCategoryRecord(e){
-  e.preventDefault();
-  const name=document.getElementById("categoryName").value.trim();
-  const available=document.getElementById("categoryAvailable").checked;
-  const editId=document.getElementById("categoryEditId").value;
-  if(!name){alert("Escribe el nombre de la categoría.");return}
-
-  const duplicate=categories.find(c=>c.name.trim().toLowerCase()===name.toLowerCase() && String(c.id)!==String(editId));
-  if(duplicate){alert("Ya existe una categoría con ese nombre.");return}
-
-  const btn=document.getElementById("saveCategory");
-  if(btn)btn.disabled=true;
-
-  try{
-    if(editId){
-      const old=categories.find(c=>String(c.id)===String(editId));
-      if(!old)throw new Error("No se encontró la categoría que estás editando.");
-
-      if(old.name!==name){
-        // Primero actualizamos los productos para que no queden apuntando al nombre anterior.
-        const {error:prodErr}=await supabaseClient.from("products").update({category:name}).eq("category",old.name);
-        if(prodErr)throw prodErr;
-      }
-
-      const {error}=await supabaseClient.from("categories").update({
-        name,available,updated_at:new Date().toISOString()
-      }).eq("id",editId);
-      if(error){
-        if(old.name!==name) await supabaseClient.from("products").update({category:old.name}).eq("category",name);
-        throw error;
-      }
-      alert("✅ Categoría actualizada.");
-    }else{
-      const maxOrder=categories.reduce((m,c)=>Math.max(m,Number(c.sort_order)||0),0);
-      const {error}=await supabaseClient.from("categories").insert({
-        name,available,sort_order:maxOrder+1
-      });
-      if(error)throw error;
-      alert("✅ Categoría creada.");
-    }
-
-    resetCategoryForm();
-    await loadCategories();
-    await loadCloud();
-    render();
-    const status=document.getElementById("cloudStatus");
-    if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;
-  }catch(err){
-    alert("No se pudo guardar la categoría en Supabase.\n\n"+(err.message||err));
-  }finally{
-    if(btn)btn.disabled=false;
-  }
-}
-
-async function toggleCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
-  if(!c)return;
-  const next=!c.available;
-  try{
-    const {error}=await supabaseClient.from("categories").update({available:next,updated_at:new Date().toISOString()}).eq("id",id);
-    if(error)throw error;
-    await loadCategories();
-  }catch(err){
-    alert("No se pudo cambiar la visibilidad de la categoría.\n\n"+(err.message||err));
-  }
-}
-
-async function removeCategory(id){
-  const c=categories.find(x=>Number(x.id)===Number(id));
-  if(!c)return;
-  const {count,error:countErr}=await supabaseClient.from("products").select("id",{count:"exact",head:true}).eq("category",c.name);
-  if(countErr){alert("No se pudo comprobar si la categoría tiene productos.\n\n"+(countErr.message||countErr));return}
-  if(Number(count)>0){
-    alert(`No se puede eliminar «${c.name}» porque tiene ${count} producto(s) asociado(s).\n\nPuedes ocultarla o mover esos productos a otra categoría.`);
-    return;
-  }
-  if(!confirm(`¿Eliminar la categoría «${c.name}»?`))return;
-  try{
-    const {error}=await supabaseClient.from("categories").delete().eq("id",id);
-    if(error)throw error;
-    resetCategoryForm();
-    await loadCategories();
-    alert("✅ Categoría eliminada.");
-  }catch(err){
-    alert("No se pudo eliminar la categoría.\n\n"+(err.message||err));
-  }
-}
-
 async function loadSettings(){
  const {data,error}=await supabaseClient.from("store_settings").select("usd_to_cup,transfer_markup_percent").eq("id",1).maybeSingle();
  if(error) throw error;
@@ -305,6 +57,52 @@ async function saveSettings(){
    alert("No se pudo guardar la configuración en Supabase.\n\n"+(err.message||err));
  }finally{if(btn) btn.disabled=false}
 }
+let categoryOrder=[];
+async function loadCategoryOrder(){
+ const box=document.getElementById("categoryOrderList"),status=document.getElementById("categoryOrderStatus");
+ try{
+  const {data,error}=await supabaseClient.from("categories").select("id,name,sort_order,available").order("sort_order",{ascending:true}).order("name",{ascending:true});
+  if(error)throw error;
+  categoryOrder=(data||[]).filter(c=>String(c.name||"").trim()).map(c=>({id:c.id,name:String(c.name).trim(),sort_order:Number(c.sort_order)||0,available:c.available!==false}));
+  renderCategoryOrder();
+  if(status)status.textContent=`☁️ ${categoryOrder.length} categorías cargadas`;
+ }catch(err){
+  if(box)box.innerHTML="<p>⚠️ No se pudieron cargar las categorías.</p>";
+  if(status)status.textContent="⚠️ Error al cargar";
+  console.error(err);
+ }
+}
+function renderCategoryOrder(){
+ const box=document.getElementById("categoryOrderList"); if(!box)return;
+ if(!categoryOrder.length){box.innerHTML="<p>No hay categorías creadas.</p>";return;}
+ box.innerHTML=categoryOrder.map((c,i)=>`<div class="category-order-item ${c.available?"":"disabled"}" data-index="${i}"><span class="category-order-position">${i+1}</span><strong>${esc(c.name)}</strong><div class="category-order-actions"><button type="button" class="category-move" data-dir="up" data-index="${i}" ${i===0?"disabled":""} aria-label="Subir ${esc(c.name)}">↑</button><button type="button" class="category-move" data-dir="down" data-index="${i}" ${i===categoryOrder.length-1?"disabled":""} aria-label="Bajar ${esc(c.name)}">↓</button></div></div>`).join("");
+ box.querySelectorAll(".category-move").forEach(btn=>btn.addEventListener("click",()=>{
+  const i=Number(btn.dataset.index),j=btn.dataset.dir==="up"?i-1:i+1;
+  if(j<0||j>=categoryOrder.length)return;
+  [categoryOrder[i],categoryOrder[j]]=[categoryOrder[j],categoryOrder[i]];
+  renderCategoryOrder();
+  const status=document.getElementById("categoryOrderStatus");if(status)status.textContent="✏️ Orden modificado · pulsa Guardar orden";
+ }));
+}
+async function saveCategoryOrder(){
+ const btn=document.getElementById("saveCategoryOrder"),status=document.getElementById("categoryOrderStatus");
+ if(!categoryOrder.length)return;
+ if(btn)btn.disabled=true;if(status)status.textContent="☁️ Guardando orden…";
+ const old=categoryOrder.map(c=>({...c}));
+ try{
+  for(let i=0;i<categoryOrder.length;i++){
+   const {error}=await supabaseClient.from("categories").update({sort_order:i+1}).eq("id",categoryOrder[i].id);
+   if(error)throw error;
+   categoryOrder[i].sort_order=i+1;
+  }
+  if(status)status.textContent="✅ Orden guardado y sincronizado con la tienda";
+ }catch(err){
+  categoryOrder=old;renderCategoryOrder();
+  if(status)status.textContent="⚠️ No se pudo guardar el orden";
+  alert("No se pudo guardar el orden de las categorías en Supabase.\n\n"+(err.message||err));
+ }finally{if(btn)btn.disabled=false}
+}
+
 async function loadCloud(){
  const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});
  if(error) throw error;
@@ -350,7 +148,7 @@ async function show(){
  if(status) status.textContent="☁️ Conectando con Supabase…";
  try{
    await loadSettings();
-   await loadCategories();
+   await loadCategoryOrder();
    const source=await loadCloud();
    render();
    if(status) status.textContent=source==="cloud"?`☁️ Sincronizado con Supabase · ${products.length} productos`:source==="migrated"?`☁️ Catálogo local enviado a Supabase · ${products.length} productos`:"☁️ Supabase conectado · catálogo vacío";
@@ -373,7 +171,7 @@ function edit(id){
  if(unitOptions.includes(p.unit||"")){document.getElementById("pUnit").value=p.unit||"";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";}
  else{document.getElementById("pUnit").value="__otra__";document.getElementById("pUnitCustom").value=p.unit||"";document.getElementById("pUnitCustom").style.display="block";}
  document.getElementById("pImage").value=p.image||"";document.getElementById("pDescription").value=p.description||"";document.getElementById("pAvailable").checked=p.available!==false;
- document.getElementById("formTitle").textContent="✏️ Editar producto";syncFancySelects();showPreview(p.image||"");scrollTo(0,0)
+ document.getElementById("formTitle").textContent="✏️ Editar producto";showPreview(p.image||"");scrollTo(0,0)
 }
 async function toggle(id){
  const p=products.find(x=>x.id===id);if(!p)return;
@@ -401,11 +199,6 @@ function compressImage(file){
 const picker=document.getElementById("pImageFile");
 picker.addEventListener("change",async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const status=document.getElementById("photoStatus");status.textContent="Leyendo la foto…";try{const data=await compressImage(file);document.getElementById("pImage").value=data;showPreview(data);status.textContent="✅ Foto cargada. Ahora pulsa «Guardar producto»."}catch(err){document.getElementById("pImage").value="";document.getElementById("imagePreview").innerHTML="";status.textContent="❌ No se pudo cargar la foto.";alert(err.message||"No se pudo cargar la foto.")}finally{picker.value=""}});
 
-
-initAllFancySelects();
-document.getElementById("categoryForm").addEventListener("submit",saveCategoryRecord);
-document.getElementById("cancelCategoryEdit").onclick=resetCategoryForm;
-
 document.getElementById("pUnit").addEventListener("change",()=>{const other=document.getElementById("pUnit").value==="__otra__";document.getElementById("pUnitCustom").style.display=other?"block":"none";if(!other)document.getElementById("pUnitCustom").value=""});
 
 document.getElementById("productForm").addEventListener("submit",async e=>{
@@ -420,22 +213,19 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
  const id=document.getElementById("editId").value;const old=[...products];if(id)products=products.map(x=>x.id===id?p:x);else products.push(p);saveLocal();render();
  try{await cloudUpsert(p);reset();render();const status=document.getElementById("cloudStatus");if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;alert("✅ Producto guardado y sincronizado en la nube.")}catch(err){products=old;saveLocal();render();alert("No se pudo guardar en Supabase. El cambio local fue revertido.\n\n"+(err.message||err))}
 });
-function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncFancySelects();showPreview("")}
+function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";showPreview("")}
 document.getElementById("cancelEdit").onclick=reset;
 document.getElementById("saveSettings").onclick=saveSettings;
+document.getElementById("saveCategoryOrder").onclick=saveCategoryOrder;
 document.getElementById("loginBtn").onclick=login;
 document.getElementById("refreshCloud").onclick=async()=>{
  const status=document.getElementById("cloudStatus");
  if(status)status.textContent="☁️ Actualizando…";
- try{await loadSettings();await loadCategories();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
+ try{await loadSettings();await loadCategoryOrder();const source=await loadCloud();render();if(status)status.textContent=`☁️ ${source==="cloud"?"Sincronizado con Supabase":"Catálogo actualizado"} · ${products.length} productos`;}
  catch(err){if(status)status.textContent="⚠️ "+(err.message||err);alert("No se pudo actualizar el catálogo.\n\n"+(err.message||err));}
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
 (async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
+supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("settings-admin").on("postgres_changes",{event:"*",schema:"public",table:"store_settings"},async()=>{try{await loadSettings()}catch(e){console.warn(e)}}).subscribe();
-
-supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{
-  try{await loadCategories()}catch(e){console.warn(e)}
-}).subscribe();
-
