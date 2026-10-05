@@ -204,6 +204,7 @@ function renderCategories(){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
+  categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
   box.innerHTML=categories.map((c,index)=>`
     <div class="category-item ${c.available?"":"is-hidden"}" data-category-id="${esc(String(c.id))}" draggable="true">
       <div class="category-drag" title="Arrastra para cambiar el orden" aria-label="Arrastrar categoría">⋮⋮</div>
@@ -211,9 +212,11 @@ function renderCategories(){
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
       </div>
+      <div class="category-order" aria-label="Orden de la categoría">
+        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},-1)" ${index===0?"disabled":""} aria-label="Subir ${esc(c.name)}" title="Subir">↑</button>
+        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},1)" ${index===categories.length-1?"disabled":""} aria-label="Bajar ${esc(c.name)}" title="Bajar">↓</button>
+      </div>
       <div class="category-actions">
-        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},-1)" ${index===0?"disabled":""} aria-label="Subir categoría">↑</button>
-        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},1)" ${index===categories.length-1?"disabled":""} aria-label="Bajar categoría">↓</button>
         <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
         <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
         <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
