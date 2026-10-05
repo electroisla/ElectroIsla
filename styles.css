@@ -3592,24 +3592,79 @@ body.cart-open-lock{
   color:#ff7600!important;
 }
 
+/* ElectroIsla — corrección definitiva del cuadro azul en botones táctiles.
+   No cambia tamaños, colores ni posiciones normales. */
+button,
+a,
+.btn,
+.btn.primary,
+.add,
+.add-circle,
+.sticky-order-btn,
+.cart-previous-btn,
+.filter,
+.icon-btn,
+.cart-btn,
+.modal-close{
+  -webkit-tap-highlight-color:transparent !important;
+  -webkit-appearance:none !important;
+  appearance:none !important;
+}
+button:focus,
+button:focus-visible,
+button:active,
+a:focus,
+a:focus-visible,
+a:active,
+.btn:focus,
+.btn:focus-visible,
+.btn:active,
+.add:focus,
+.add:focus-visible,
+.add:active,
+.add-circle:focus,
+.add-circle:focus-visible,
+.add-circle:active,
+.sticky-order-btn:focus,
+.sticky-order-btn:focus-visible,
+.sticky-order-btn:active,
+.cart-previous-btn:focus,
+.cart-previous-btn:focus-visible,
+.cart-previous-btn:active,
+.filter:focus,
+.filter:focus-visible,
+.filter:active,
+.icon-btn:focus,
+.icon-btn:focus-visible,
+.icon-btn:active,
+.cart-btn:focus,
+.cart-btn:focus-visible,
+.cart-btn:active,
+.modal-close:focus,
+.modal-close:focus-visible,
+.modal-close:active{
+  outline:0 !important;
+  -webkit-outline:0 !important;
+  box-shadow:none !important;
+}
 
-/* v9.8.126 — "Continuar con mi pedido": mismo estilo que "Ver mi pedido" */
-.cart-previous-btn{
-  background:#ffeadc !important;
-  color:#f58220 !important;
+/* Botón real de envío del pedido a WhatsApp */
+.modal-card form > button.btn.primary[type="submit"]{
+  background:#f58220 !important;
+  color:#fff !important;
   border:0 !important;
-  border-radius:999px !important;
-  font-weight:600 !important;
+  outline:0 !important;
   box-shadow:none !important;
+  -webkit-tap-highlight-color:transparent !important;
+  -webkit-appearance:none !important;
+  appearance:none !important;
 }
-.cart-previous-btn:hover{
-  background:#ffdfc7 !important;
-  color:#f58220 !important;
+.modal-card form > button.btn.primary[type="submit"]:hover,
+.modal-card form > button.btn.primary[type="submit"]:focus,
+.modal-card form > button.btn.primary[type="submit"]:focus-visible,
+.modal-card form > button.btn.primary[type="submit"]:active{
+  background:#f58220 !important;
+  color:#fff !important;
+  outline:0 !important;
   box-shadow:none !important;
-}
-.cart-previous-btn:active{
-  transform:scale(.98) !important;
-}
-.cart-previous-arrow{
-  color:#f58220 !important;
 }

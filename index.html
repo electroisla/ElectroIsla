@@ -3,22 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="electroisla-version" content="9.8.44">
+  <meta name="electroisla-version" content="9.8.1">
   <title>ElectroIsla | Alimentos y Electrodomésticos</title>
   <meta name="description" content="ElectroIsla: alimentos y electrodomésticos. Compra y solicita tu pedido por WhatsApp.">
-  <link rel="stylesheet" href="styles.css?v=9.8.125">
-<style>
-.zelle-logo-icon{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;vertical-align:middle}
-.zelle-logo-icon svg{display:block;width:18px;height:18px}
-</style>
+  <link rel="stylesheet" href="styles.css?v=9.8.1">
 </head>
 <body>
-<header class="reference-topbar shop-topbar" aria-label="ElectroIsla 360">
+<header class="topbar shop-topbar">
+  <a class="brand" href="index.html" aria-label="ElectroIsla 360"><img class="brand-logo" src="electroisla-logo-real.jpg" alt="ElectroIsla 360"></a>
+  <nav><a href="#ofertas">Productos</a><a href="#contacto">Contacto</a><a class="admin-link" href="admin.html">Administrar</a></nav>
+  <button id="cartBtn" class="cart-btn" aria-label="Ver mi Pedido" title="Ver mi Pedido">
+  <svg class="cart-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="M3 4h2l2.1 10.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 7H7"/>
+    <circle cx="10" cy="19" r="1.5"/>
+    <circle cx="18" cy="19" r="1.5"/>
+  </svg>
+  <b id="cartCount">0</b>
+</button>
 </header>
 <main>
-  <section class="store-hero reference-store-hero">
-    <div class="reference-visual">
-      <div class="reference-composite"><img src="electroisla-header-final.png?v=16" alt="ElectroIsla 360 - Todo para tu hogar en un solo lugar"></div>
+  <section class="store-hero">
+    <div class="store-banner">
+      <img class="store-banner-image" src="electroisla-portada.png" alt="ElectroIsla 360 - Todo para tu hogar en un solo lugar">
     </div>
     <div class="store-info"><strong>Compra fácil, directo a tu puerta</strong><span>Selecciona tus productos y arma tu pedido.</span></div>
   </section>
@@ -44,62 +50,19 @@
   </section>
 </main>
 <div id="stickyOrder" class="sticky-order">
-  <div class="sticky-order-info"><span data-sticky-count><span data-sticky-count-number>0</span> <span data-sticky-count-word>productos</span></span><strong data-sticky-total>$0.00 USD</strong></div>
+  <div class="sticky-order-info"><span data-sticky-count>0 productos</span><strong data-sticky-total>$0.00 USD</strong></div>
   <button class="sticky-order-btn" onclick="openCart()">Ver mi Pedido</button>
 </div>
 
 <div id="cartOverlay" class="overlay hidden"></div>
 <aside id="cart" class="cart-panel">
-  <div class="cart-brand-header" aria-label="ElectroIsla 360 - Cabecera del pedido">
-    <img src="cart-header-reference.png?v=1" alt="ElectroIsla 360 - Tu hogar, nuestra prioridad">
-  </div>
   <div class="cart-head">
-    <div class="cart-head-main">
-      <button id="closeCart" class="cart-back" aria-label="Regresar">
-        <span class="cart-back-icon" aria-hidden="true">
-          <svg viewBox="0 0 48 48" focusable="false"><path transform="translate(-4 0)" d="M30 9 15 24l15 15M16 24h25"/></svg>
-        </span>
-        <span>Regresar</span>
-      </button>
-      <div class="cart-title-block">
-        <h1>Tu pedido</h1>
-        <p>Revisa los productos de tu carrito antes de continuar.</p>
-      </div>
-    </div>
-
-    <div class="cart-head-summary" aria-label="Resumen del pedido">
-      <div class="cart-summary-products">
-        <span class="cart-summary-icon" aria-hidden="true">
-          <svg viewBox="0 0 64 64" focusable="false"><path d="M8 12h8l5 30h31l6-22H19"/><path d="M25 51a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm27 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path d="M24 29h27"/></svg>
-        </span>
-        <div>
-          <span class="cart-summary-label">Total de productos</span>
-          <strong id="cartTopCount">0 artículos</strong>
-        </div>
-      </div>
-      <div class="cart-summary-divider"></div>
-      <div class="cart-summary-total">
-        <span>Total</span>
-        <strong id="cartTopTotal">USD 0.00</strong>
-      </div>
-    </div>
+    <button id="closeCart" class="cart-back" aria-label="Volver">← <span>Atrás</span></button>
+    <div class="cart-head-total"><span>Su carrito</span><strong id="cartTopTotal">US$ 0.00</strong></div>
   </div>
   <div id="cartItems" class="cart-items"></div>
-  <div class="cart-delivery-note" role="note" aria-label="Información sobre el precio de entrega">
-    <span class="cart-delivery-note-icon" aria-hidden="true">
-      <img src="delivery-truck-electroisla.png" alt="" />
-    </span>
-    <div class="cart-delivery-note-copy">
-      <strong>Los precios pueden variar según la zona de entrega.</strong>
-      <span>Puedes ver el costo final en el siguiente paso.</span>
-    </div>
-  </div>
   <div class="cart-service-bar">
-    <div class="cart-bottom-total" aria-label="Total del pedido">
-      <span>Total</span>
-      <strong id="cartBottomTotal">$0.00 USD</strong>
-    </div>
-    <button id="checkoutBtn" class="btn primary cart-previous-btn" aria-label="Continuar con el pedido">Continuar con el pedido <span class="cart-previous-arrow" aria-hidden="true">→</span></button>
+    <button id="checkoutBtn" class="btn primary full cart-previous-btn" aria-label="Continuar con el pedido">Continuar con el pedido</button>
   </div>
 </aside>
 
@@ -145,7 +108,7 @@
         <div class="payment-title">💳 Método de pago</div>
         <p class="payment-help">Alimentos: solo USD o Zelle. Electrodomésticos: USD, Zelle, CUP o Transferencia.</p>
         <label class="payment-option"><input type="radio" name="paymentMethod" value="USD" checked> <span>💵 USD</span></label>
-        <label class="payment-option"><input type="radio" name="paymentMethod" value="ZELLE"> <span class="zelle-payment-label"><span class="zelle-logo-icon" aria-hidden="true"><svg viewBox="0 0 32 32" width="18" height="18" focusable="false"><rect width="32" height="32" rx="7" fill="#6d1ed4"/><path d="M9 8h14v4.1l-8.1 8.4H23V24H9v-4.1l8.1-8.4H9V8Z" fill="#fff"/></svg></span><span>Zelle</span></span></label>
+        <label class="payment-option"><input type="radio" name="paymentMethod" value="ZELLE"> <span>🟣 Zelle</span></label>
         <label class="payment-option"><input type="radio" name="paymentMethod" value="CUP"> <span>🇨🇺 CUP</span></label>
         <label class="payment-option"><input type="radio" name="paymentMethod" value="TRANSFERENCIA"> <span>💳 Transferencia</span></label>
         <div id="paymentSummary" class="payment-summary"></div>
@@ -169,7 +132,7 @@
 <footer><strong>ElectroIsla</strong><span>Alimentos + Electrodomésticos</span><span>WhatsApp: +53 52017110</span></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=4"></script>
-<script src="app.js?v=122"></script>
-<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=9.8.15-visual",{updateViaCache:"none"}).catch(()=>{}));}</script>
+<script src="app.js?v=17"></script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=9.8.1",{updateViaCache:"none"}).catch(()=>{}));}</script>
 </body>
 </html>
