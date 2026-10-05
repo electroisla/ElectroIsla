@@ -353,19 +353,42 @@
 <div class="row"><button class="btn primary" type="submit">Guardar producto</button><button class="btn secondary" type="button" id="cancelEdit">Limpiar</button></div>
 </form>
 <div class="admin-card"><h2>📦 Catálogo actual</h2><p id="cloudStatus" style="font-size:.9rem;color:#5b6670;margin-top:-6px;margin-bottom:12px">☁️ Esperando conexión…</p><button type="button" class="btn secondary" id="refreshCloud" style="margin-bottom:12px">🔄 Actualizar catálogo</button><div id="adminProducts"></div></div>
+
+
+<section class="admin-card sales-report" id="salesReport">
+  <div class="sales-report-head">
+    <div><p class="eyebrow">VENTAS</p><h2>📊 Reporte de ventas</h2></div>
+    <button type="button" class="btn secondary" id="salesRefresh">🔄 Actualizar</button>
+  </div>
+  <div class="sales-filters">
+    <label>Período<select id="salesRange">
+      <option value="today">Hoy</option>
+      <option value="7d" selected>Últimos 7 días</option>
+      <option value="30d">Últimos 30 días</option>
+      <option value="all">Todo</option>
+    </select></label>
+    <button type="button" class="btn primary" id="salesExport">⬇️ Exportar CSV</button>
+  </div>
+  <p id="salesStatus" class="sales-status">☁️ Cargando ventas…</p>
+  <div class="sales-summary-grid">
+    <div class="sales-kpi"><span>Pedidos</span><strong id="salesOrdersCount">0</strong></div>
+    <div class="sales-kpi"><span>Ventas USD</span><strong id="salesUsdTotal">$0.00</strong></div>
+    <div class="sales-kpi"><span>Ventas CUP</span><strong id="salesCupTotal">$0.00</strong></div>
+  </div>
+  <div class="sales-report-grid">
+    <div><h3>Productos más vendidos</h3><div id="salesTopProducts" class="sales-list"></div></div>
+    <div><h3>Métodos de pago</h3><div id="salesPayments" class="sales-list"></div></div>
+    <div><h3>Ventas por categoría</h3><div id="salesCategories" class="sales-list"></div></div>
+    <div><h3>Ventas por día</h3><div id="salesDaily" class="sales-list"></div></div>
+  </div>
+  <div class="sales-table-wrap">
+    <h3>Pedidos</h3>
+    <div id="salesOrdersTable"></div>
+  </div>
+</section>
+
 </div></section></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=2"></script>
-<script src="admin.js?v=14"></script>
-</body></html><style>
-.category-item{display:grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important}
-.category-drag{width:24px!important;text-align:center!important;cursor:grab!important;color:#8aa0b5!important;user-select:none!important}
-.category-drag:active{cursor:grabbing!important}
-.category-order{display:flex!important;gap:3px!important}
-.category-move{min-width:30px!important;width:30px!important;height:30px!important;padding:4px!important;border-radius:8px!important}
-.category-move:disabled{opacity:.35!important;cursor:not-allowed!important}
-.category-actions{grid-column:1/-1!important;justify-content:flex-end!important;display:flex!important;gap:4px!important;flex-wrap:wrap!important}
-.category-dragging{opacity:.5!important}
-.category-drag-over{border-color:#F28C28!important;box-shadow:0 0 0 2px rgba(242,140,40,.15)!important}
-@media(max-width:420px){.category-item{grid-template-columns:22px minmax(0,1fr) auto!important;gap:5px!important}.category-drag{width:22px!important}.category-move{width:28px!important;min-width:28px!important;height:28px!important}.category-actions{justify-content:flex-start!important}}
-</style>
+<script src="admin.js?v=15"></script>
+</body></html>

@@ -3592,79 +3592,81 @@ body.cart-open-lock{
   color:#ff7600!important;
 }
 
-/* ElectroIsla — corrección definitiva del cuadro azul en botones táctiles.
-   No cambia tamaños, colores ni posiciones normales. */
-button,
-a,
-.btn,
-.btn.primary,
-.add,
-.add-circle,
-.sticky-order-btn,
-.cart-previous-btn,
-.filter,
-.icon-btn,
-.cart-btn,
-.modal-close{
-  -webkit-tap-highlight-color:transparent !important;
-  -webkit-appearance:none !important;
-  appearance:none !important;
+
+/* v9.8.126 — "Continuar con mi pedido": mismo estilo que "Ver mi pedido" */
+.cart-previous-btn{
+  background:#ffeadc !important;
+  color:#f58220 !important;
+  border:0 !important;
+  border-radius:999px !important;
+  font-weight:600 !important;
+  box-shadow:none !important;
 }
+.cart-previous-btn:hover{
+  background:#ffdfc7 !important;
+  color:#f58220 !important;
+  box-shadow:none !important;
+}
+.cart-previous-btn:active{
+  transform:scale(.98) !important;
+}
+.cart-previous-arrow{
+  color:#f58220 !important;
+}
+
+
+/* ElectroIsla — Enviar pedido por WhatsApp: mismo estilo visual de unidad de medida */
+.btn.primary.full[type="submit"]{
+  background:#fff1e8 !important;
+  color:#ff7600 !important;
+  border-radius:999px !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:hover,
+.btn.primary.full[type="submit"]:focus-visible{
+  background:#ffe5d6 !important;
+  color:#f56e00 !important;
+  box-shadow:none !important;
+}
+.btn.primary.full[type="submit"]:active{
+  background:#ffdfd0 !important;
+  color:#f56e00 !important;
+  transform:scale(.98);
+}
+
+/* ElectroIsla — eliminar cuadro azul al seleccionar botones */
 button:focus,
-button:focus-visible,
-button:active,
-a:focus,
-a:focus-visible,
-a:active,
-.btn:focus,
-.btn:focus-visible,
-.btn:active,
-.add:focus,
-.add:focus-visible,
-.add:active,
-.add-circle:focus,
-.add-circle:focus-visible,
-.add-circle:active,
-.sticky-order-btn:focus,
-.sticky-order-btn:focus-visible,
-.sticky-order-btn:active,
-.cart-previous-btn:focus,
-.cart-previous-btn:focus-visible,
-.cart-previous-btn:active,
-.filter:focus,
-.filter:focus-visible,
-.filter:active,
-.icon-btn:focus,
-.icon-btn:focus-visible,
-.icon-btn:active,
-.cart-btn:focus,
-.cart-btn:focus-visible,
-.cart-btn:active,
-.modal-close:focus,
-.modal-close:focus-visible,
-.modal-close:active{
-  outline:0 !important;
-  -webkit-outline:0 !important;
+button:focus-visible{
+  outline:none !important;
   box-shadow:none !important;
 }
 
-/* Botón real de envío del pedido a WhatsApp */
-.modal-card form > button.btn.primary[type="submit"]{
-  background:#f58220 !important;
-  color:#fff !important;
-  border:0 !important;
-  outline:0 !important;
-  box-shadow:none !important;
-  -webkit-tap-highlight-color:transparent !important;
-  -webkit-appearance:none !important;
-  appearance:none !important;
+
+/* ElectroIsla — eliminar también el resaltado azul táctil del navegador */
+button,
+a,
+input,
+select,
+textarea{
+  -webkit-tap-highlight-color: transparent !important;
+  tap-highlight-color: transparent !important;
 }
-.modal-card form > button.btn.primary[type="submit"]:hover,
-.modal-card form > button.btn.primary[type="submit"]:focus,
-.modal-card form > button.btn.primary[type="submit"]:focus-visible,
-.modal-card form > button.btn.primary[type="submit"]:active{
-  background:#f58220 !important;
-  color:#fff !important;
-  outline:0 !important;
-  box-shadow:none !important;
+
+button:focus,
+button:focus-visible,
+button:active{
+  outline: none !important;
 }
+
+/* ElectroIsla — categoría/unidad junto al precio: estilo naranja suave */
+.shop-product .price small{
+  display:inline-block!important;
+  color:#f58220!important;
+  background:#fff1e8!important;
+  border-radius:999px!important;
+  padding:3px 8px!important;
+  font-weight:600!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
+\n\n/* ElectroIsla — reporte de ventas */\n.sales-report{margin-top:18px}.sales-report-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.sales-report-head h2{margin:0}.sales-filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-top:14px}.sales-filters label{min-width:190px}.sales-status{font-size:.9rem;color:#5b6670;margin:12px 0}.sales-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.sales-kpi{background:#eef6ff;border:1px solid #dce7f2;border-radius:14px;padding:14px}.sales-kpi span{display:block;font-size:.82rem;color:#5b6670}.sales-kpi strong{display:block;margin-top:4px;color:#064887;font-size:1.15rem}.sales-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.sales-report-grid>div,.sales-table-wrap{border:1px solid #dce7f2;border-radius:14px;padding:14px;background:#fff}.sales-report h3{margin:0 0 10px;color:#17324d;font-size:1rem}.sales-list-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2f7}.sales-list-row:last-child{border-bottom:0}.sales-list-row strong{color:#064887}.sales-empty{font-size:.9rem;color:#6b7280;padding:8px 0}.sales-table-wrap{margin-top:14px;overflow:hidden}.sales-table{width:100%;border-collapse:collapse;font-size:.88rem}.sales-table th,.sales-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #edf2f7;vertical-align:top}.sales-table th{color:#17324d;background:#f7fbff}.sales-table td small{display:block;color:#6b7280;margin-top:2px}@media(max-width:700px){.sales-summary-grid,.sales-report-grid{grid-template-columns:1fr}.sales-report-head{align-items:flex-start}.sales-table-wrap{overflow-x:auto}.sales-table{min-width:650px}}\n

@@ -143,16 +143,11 @@ function renderCategories(){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map((c,i)=>`
+  box.innerHTML=categories.map(c=>`
     <div class="category-item ${c.available?"":"is-hidden"}">
-      <div class="category-drag" title="Arrastra para cambiar de posición" draggable="true" data-id="${esc(c.id)}">☷</div>
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
-      </div>
-      <div class="category-order">
-        <button type="button" class="btn secondary category-move" ${i===0?"disabled":""} onclick="moveCategory(${Number(c.id)},-1)" aria-label="Subir categoría">↑</button>
-        <button type="button" class="btn secondary category-move" ${i===categories.length-1?"disabled":""} onclick="moveCategory(${Number(c.id)},1)" aria-label="Bajar categoría">↓</button>
       </div>
       <div class="category-actions">
         <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
@@ -160,81 +155,6 @@ function renderCategories(){
         <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
       </div>
     </div>`).join("");
-  initCategoryReorder();
-}
-
-async function persistCategoryOrder(){
-  const updates=categories.map((c,i)=>({id:c.id,sort_order:i+1}));
-  for(const item of updates){
-    const {error}=await supabaseClient.from("categories").update({sort_order:item.sort_order}).eq("id",item.id);
-    if(error)throw error;
-  }
-}
-
-async function moveCategory(id,direction){
-  const index=categories.findIndex(c=>Number(c.id)===Number(id));
-  const target=index+direction;
-  if(index<0||target<0||target>=categories.length)return;
-  const old=categories.map(c=>({...c}));
-  [categories[index],categories[target]]=[categories[target],categories[index]];
-  categories.forEach((c,i)=>c.sort_order=i+1);
-  renderCategories();
-  try{
-    await persistCategoryOrder();
-  }catch(err){
-    categories=old;
-    renderCategories();
-    alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));
-  }
-}
-
-function initCategoryReorder(){
-  const box=document.getElementById("categoryList");
-  if(!box||box.dataset.reorderReady)return;
-  box.dataset.reorderReady="1";
-  let draggedId=null;
-  box.addEventListener("dragstart",e=>{
-    const handle=e.target.closest(".category-drag");
-    if(!handle)return;
-    draggedId=String(handle.dataset.id);
-    const item=handle.closest(".category-item");
-    if(item)item.classList.add("category-dragging");
-    e.dataTransfer.effectAllowed="move";
-    e.dataTransfer.setData("text/plain",draggedId);
-  });
-  box.addEventListener("dragend",e=>{
-    const item=e.target.closest(".category-item");
-    if(item)item.classList.remove("category-dragging");
-    draggedId=null;
-  });
-  box.addEventListener("dragover",e=>{
-    if(!draggedId)return;
-    const item=e.target.closest(".category-item");
-    if(!item)return;
-    e.preventDefault();
-    item.classList.add("category-drag-over");
-  });
-  box.addEventListener("dragleave",e=>{
-    const item=e.target.closest(".category-item");
-    if(item&&!item.contains(e.relatedTarget))item.classList.remove("category-drag-over");
-  });
-  box.addEventListener("drop",async e=>{
-    const item=e.target.closest(".category-item");
-    if(!item||!draggedId)return;
-    e.preventDefault();
-    item.classList.remove("category-drag-over");
-    const targetId=String(item.querySelector(".category-drag")?.dataset.id||"");
-    if(!targetId||targetId===draggedId)return;
-    const from=categories.findIndex(c=>String(c.id)===draggedId);
-    const to=categories.findIndex(c=>String(c.id)===targetId);
-    if(from<0||to<0)return;
-    const old=categories.map(c=>({...c}));
-    const [moved]=categories.splice(from,1);
-    categories.splice(to,0,moved);
-    categories.forEach((c,i)=>c.sort_order=i+1);
-    renderCategories();
-    try{await persistCategoryOrder()}catch(err){categories=old;renderCategories();alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));}
-  });
 }
 
 function resetCategoryForm(){
@@ -519,3 +439,92 @@ supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",sche
   try{await loadCategories()}catch(e){console.warn(e)}
 }).subscribe();
 
+
+
+// ElectroIsla — reporte de ventas
+let salesRows=[];
+function salesMoney(value,currency){
+  const n=Number(value)||0;
+  return (currency==="USD"?"$":"$")+n.toFixed(2)+" "+currency;
+}
+function salesEscape(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function salesRangeStart(){
+  const range=document.getElementById("salesRange")?.value||"7d";
+  if(range==="all")return null;
+  const d=new Date();
+  d.setHours(0,0,0,0);
+  if(range==="today")return d.toISOString();
+  d.setDate(d.getDate()-(range==="30d"?29:6));
+  return d.toISOString();
+}
+function renderSalesList(id,items,empty="Sin datos") {
+  const box=document.getElementById(id); if(!box)return;
+  box.innerHTML=items.length?items.map(x=>`<div class="sales-list-row"><span>${salesEscape(x.label)}</span><strong>${salesEscape(x.value)}</strong></div>`).join(""):`<div class="sales-empty">${empty}</div>`;
+}
+function renderSalesReport(rows){
+  salesRows=rows||[];
+  const count=document.getElementById("salesOrdersCount");
+  const usd=document.getElementById("salesUsdTotal");
+  const cup=document.getElementById("salesCupTotal");
+  if(count)count.textContent=String(salesRows.length);
+  let usdTotal=0,cupTotal=0;
+  const productsMap={},paymentsMap={},categoriesMap={},dailyMap={};
+  salesRows.forEach(o=>{
+    const cur=String(o.currency||"USD").toUpperCase();
+    const total=Number(o.total)||0;
+    if(cur==="USD")usdTotal+=total;else cupTotal+=total;
+    const pm=String(o.payment_method||"Sin especificar");
+    paymentsMap[pm]=(paymentsMap[pm]||0)+total;
+    const day=o.created_at?new Date(o.created_at).toLocaleDateString("es-ES"):"Sin fecha";
+    dailyMap[day]=(dailyMap[day]||0)+total;
+    const items=Array.isArray(o.items)?o.items:[];
+    items.forEach(it=>{
+      const name=String(it.name||"Producto");
+      const qty=Number(it.qty)||0;
+      productsMap[name]=(productsMap[name]||0)+qty;
+      const cat=String(it.category||"Sin categoría");
+      categoriesMap[cat]=(categoriesMap[cat]||0)+(Number(it.line_total)||0);
+    });
+  });
+  if(usd)usd.textContent=salesMoney(usdTotal,"USD");
+  if(cup)cup.textContent=salesMoney(cupTotal,"CUP");
+  renderSalesList("salesTopProducts",Object.entries(productsMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>({label:k,value:`${v} uds.`})));
+  renderSalesList("salesPayments",Object.entries(paymentsMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:salesMoney(v,(k==="USD"||k==="ZELLE")?"USD":"CUP")})));
+  renderSalesList("salesCategories",Object.entries(categoriesMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:salesMoney(v,"USD")})));
+  renderSalesList("salesDaily",Object.entries(dailyMap).sort((a,b)=>new Date(a[0])-new Date(b[0])).map(([k,v])=>({label:k,value:salesMoney(v,"USD")})));
+  const table=document.getElementById("salesOrdersTable");
+  if(table){
+    table.innerHTML=salesRows.length?`<table class="sales-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th></tr></thead><tbody>${salesRows.map(o=>{const cur=String(o.currency||"USD").toUpperCase();return `<tr><td>${salesEscape(o.created_at?new Date(o.created_at).toLocaleString("es-ES"):"")}</td><td>${salesEscape(o.customer_name||"")}<small>${salesEscape(o.customer_phone||"")}</small></td><td>${salesEscape(o.payment_method||"")}</td><td>${salesMoney(o.total,cur)}</td><td>${salesEscape(o.status||"sent")}</td></tr>`}).join("")}</tbody></table>`:`<div class="sales-empty">No hay pedidos registrados en este período.</div>`;
+  }
+}
+async function loadSalesReport(){
+  const status=document.getElementById("salesStatus");
+  if(status)status.textContent="☁️ Cargando ventas…";
+  try{
+    let query=supabaseClient.from("orders").select("id,created_at,customer_name,customer_phone,delivery_zone,payment_method,currency,subtotal,delivery_fee,total,items,note,status").order("created_at",{ascending:false});
+    const start=salesRangeStart();
+    if(start)query=query.gte("created_at",start);
+    const {data,error}=await query;
+    if(error)throw error;
+    renderSalesReport(data||[]);
+    if(status)status.textContent=`☁️ ${data?.length||0} pedido(s) encontrado(s)`;
+  }catch(err){
+    salesRows=[];renderSalesReport([]);
+    if(status)status.textContent="⚠️ No se pudo cargar el reporte: "+(err.message||err);
+  }
+}
+function exportSalesCsv(){
+  if(!salesRows.length){alert("No hay ventas para exportar en el período seleccionado.");return}
+  const headers=["Fecha","Cliente","Teléfono","Zona","Método de pago","Moneda","Subtotal","Domicilio","Total","Estado"];
+  const rows=salesRows.map(o=>[o.created_at,o.customer_name,o.customer_phone,o.delivery_zone,o.payment_method,o.currency,o.subtotal,o.delivery_fee,o.total,o.status]);
+  const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\
+");
+  const blob=new Blob(["\\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`electroisla-ventas-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+}
+document.getElementById("salesRange")?.addEventListener("change",loadSalesReport);
+document.getElementById("salesRefresh")?.addEventListener("click",loadSalesReport);
+document.getElementById("salesExport")?.addEventListener("click",exportSalesCsv);
+supabaseClient.channel("orders-admin").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadSalesReport()).subscribe();
+const originalShow=show;
+show=async function(){await originalShow();await loadSalesReport()};
