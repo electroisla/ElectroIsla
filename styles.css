@@ -1391,12 +1391,6 @@ body.category-menu-open{
   .admin-select-option{padding:10px 9px}
 }
 
-/* Corrección puntual: selector de Unidad / presentación */
-#pUnit + .admin-select-picker{display:block!important;width:100%;z-index:30!important}
-#pUnit + .admin-select-picker .admin-select-menu{z-index:120!important;min-height:40px}
-#pUnit + .admin-select-picker.open .admin-select-menu{display:block!important;visibility:visible!important;opacity:1!important}
-
-
 /* Corrección puntual: las listas abiertas deben quedar por encima de los campos siguientes. */
 .admin-page .admin-grid #pCategory + .admin-select-picker.open,
 .admin-page .admin-grid #pCurrency + .admin-select-picker.open,
@@ -1406,9 +1400,3 @@ body.category-menu-open{
 .admin-page .admin-grid #pUnit + .admin-select-picker.open .admin-select-menu{z-index:10001!important}
 
 
-/* Corrección definitiva: selector de Unidad / presentación independiente y visible */
-#pUnit + #unitPicker{display:block!important;width:100%!important;position:relative!important;margin-top:7px!important;z-index:50!important;}
-#unitPicker.open{z-index:10000!important;}
-#unitPicker .admin-select-menu{display:none!important;visibility:visible!important;opacity:1!important;}
-#unitPicker.open .admin-select-menu{display:block!important;z-index:10001!important;}
-#unitPicker .admin-select-trigger{display:flex!important;width:100%!important;min-height:52px!important;}
