@@ -58,6 +58,9 @@ async function saveSettings(){
  }finally{if(btn) btn.disabled=false}
 }
 let categoryOrder=[];
+let categoryDragIndex=null;
+let categoryDragPointerId=null;
+
 async function loadCategoryOrder(){
  const box=document.getElementById("categoryOrderList"),status=document.getElementById("categoryOrderStatus");
  try{
@@ -72,18 +75,69 @@ async function loadCategoryOrder(){
   console.error(err);
  }
 }
+
 function renderCategoryOrder(){
  const box=document.getElementById("categoryOrderList"); if(!box)return;
  if(!categoryOrder.length){box.innerHTML="<p>No hay categorías creadas.</p>";return;}
- box.innerHTML=categoryOrder.map((c,i)=>`<div class="category-order-item ${c.available?"":"disabled"}" data-index="${i}"><span class="category-order-position">${i+1}</span><strong>${esc(c.name)}</strong><div class="category-order-actions"><button type="button" class="category-move" data-dir="up" data-index="${i}" ${i===0?"disabled":""} aria-label="Subir ${esc(c.name)}">↑</button><button type="button" class="category-move" data-dir="down" data-index="${i}" ${i===categoryOrder.length-1?"disabled":""} aria-label="Bajar ${esc(c.name)}">↓</button></div></div>`).join("");
- box.querySelectorAll(".category-move").forEach(btn=>btn.addEventListener("click",()=>{
-  const i=Number(btn.dataset.index),j=btn.dataset.dir==="up"?i-1:i+1;
-  if(j<0||j>=categoryOrder.length)return;
-  [categoryOrder[i],categoryOrder[j]]=[categoryOrder[j],categoryOrder[i]];
-  renderCategoryOrder();
-  const status=document.getElementById("categoryOrderStatus");if(status)status.textContent="✏️ Orden modificado · pulsa Guardar orden";
- }));
+ box.innerHTML=categoryOrder.map((c,i)=>`<div class="category-order-item ${c.available?"":"disabled"}" data-index="${i}" tabindex="0" role="listitem" aria-label="${esc(c.name)}, posición ${i+1}">
+   <button type="button" class="category-drag-handle" data-index="${i}" aria-label="Arrastrar ${esc(c.name)} para cambiar su posición" title="Arrastrar para cambiar de posición">⠿</button>
+   <span class="category-order-position">${i+1}</span>
+   <div class="category-order-info"><strong>${esc(c.name)}</strong><small>${c.available?"Visible en la tienda":"Oculta en la tienda"}</small></div>
+ </div>`).join("");
+ attachCategoryDrag();
 }
+
+function moveCategory(from,to){
+ if(from===to||from<0||to<0||from>=categoryOrder.length||to>=categoryOrder.length)return;
+ const moved=categoryOrder.splice(from,1)[0];
+ categoryOrder.splice(to,0,moved);
+ renderCategoryOrder();
+ const status=document.getElementById("categoryOrderStatus");
+ if(status)status.textContent="✏️ Orden modificado · suelta para guardar";
+}
+
+function attachCategoryDrag(){
+ const box=document.getElementById("categoryOrderList"); if(!box)return;
+ box.querySelectorAll(".category-drag-handle").forEach(handle=>{
+  handle.addEventListener("pointerdown",e=>{
+   if(e.pointerType==="mouse" && e.button!==0)return;
+   categoryDragIndex=Number(handle.dataset.index);
+   categoryDragPointerId=e.pointerId;
+   handle.setPointerCapture?.(e.pointerId);
+   const item=handle.closest(".category-order-item");
+   item?.classList.add("dragging");
+   e.preventDefault();
+  });
+  handle.addEventListener("pointermove",e=>{
+   if(categoryDragPointerId!==e.pointerId||categoryDragIndex===null)return;
+   const items=[...box.querySelectorAll(".category-order-item")];
+   const current=items[categoryDragIndex];
+   if(!current)return;
+   const y=e.clientY;
+   let target=categoryDragIndex;
+   items.forEach((item,i)=>{
+    if(i===categoryDragIndex)return;
+    const r=item.getBoundingClientRect();
+    if(y>r.top+r.height/2)target=i;
+   });
+   if(target!==categoryDragIndex){
+    moveCategory(categoryDragIndex,target);
+    categoryDragIndex=target;
+    const nextHandle=box.querySelector(`.category-drag-handle[data-index="${target}"]`);
+    nextHandle?.setPointerCapture?.(e.pointerId);
+   }
+   e.preventDefault();
+  });
+  const finish=e=>{
+   if(categoryDragPointerId!==e.pointerId)return;
+   categoryDragIndex=null;categoryDragPointerId=null;
+   box.querySelectorAll(".category-order-item.dragging").forEach(x=>x.classList.remove("dragging"));
+  };
+  handle.addEventListener("pointerup",finish);
+  handle.addEventListener("pointercancel",finish);
+ });
+}
+
 async function saveCategoryOrder(){
  const btn=document.getElementById("saveCategoryOrder"),status=document.getElementById("categoryOrderStatus");
  if(!categoryOrder.length)return;
