@@ -3657,3 +3657,15 @@ button:focus-visible,
 button:active{
   outline: none !important;
 }
+
+/* ElectroIsla — categoría/unidad junto al precio: estilo naranja suave */
+.shop-product .price small{
+  display:inline-block!important;
+  color:#f58220!important;
+  background:#fff1e8!important;
+  border-radius:999px!important;
+  padding:3px 8px!important;
+  font-weight:600!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+}
