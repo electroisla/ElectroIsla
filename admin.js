@@ -136,6 +136,67 @@ function initAllFancySelects(){
   initFancySelect("pUnit","unitPicker","unitPickerTrigger","unitPickerValue","unitPickerOptions");
 }
 
+function initCategoryOrdering(){
+  const box=document.getElementById("categoryList");
+  if(!box||box.dataset.orderReady)return;
+  box.dataset.orderReady="1";
+  box.addEventListener("dragstart",e=>{
+    const item=e.target.closest(".category-item[data-category-id]");
+    if(!item)return;
+    box._dragged=item;
+    item.classList.add("is-dragging");
+    if(e.dataTransfer){e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",item.dataset.categoryId);}
+  });
+  box.addEventListener("dragover",e=>{
+    e.preventDefault();
+    const dragged=box._dragged;
+    if(!dragged)return;
+    const target=e.target.closest(".category-item[data-category-id]");
+    if(!target||target===dragged)return;
+    const r=target.getBoundingClientRect();
+    target.parentNode.insertBefore(dragged,e.clientY<r.top+r.height/2?target:target.nextSibling);
+  });
+  box.addEventListener("dragend",async()=>{
+    const dragged=box._dragged;
+    if(dragged)dragged.classList.remove("is-dragging");
+    box._dragged=null;
+    await persistCategoryOrder();
+  });
+}
+
+async function persistCategoryOrder(){
+  const box=document.getElementById("categoryList");
+  if(!box)return;
+  const ids=[...box.querySelectorAll(".category-item[data-category-id]")].map(x=>String(x.dataset.categoryId));
+  if(ids.length<2)return;
+  const reordered=ids.map((id,index)=>{
+    const c=categories.find(x=>String(x.id)===id);
+    if(c)c.sort_order=index+1;
+    return c;
+  }).filter(Boolean);
+  try{
+    const results=await Promise.all(reordered.map(c=>supabaseClient.from("categories").update({sort_order:c.sort_order,updated_at:new Date().toISOString()}).eq("id",c.id)));
+    const failed=results.find(r=>r.error);
+    if(failed)throw failed.error;
+    categories.sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));
+    const status=document.getElementById("cloudStatus");
+    if(status)status.textContent=`☁️ Orden de categorías guardado · ${categories.length} categorías`;
+  }catch(err){
+    alert("No se pudo guardar el orden de las categorías.\n\n"+(err.message||err));
+    await loadCategories();
+  }
+}
+
+function moveCategory(id,direction){
+  const index=categories.findIndex(c=>String(c.id)===String(id));
+  const target=index+direction;
+  if(index<0||target<0||target>=categories.length)return;
+  [categories[index],categories[target]]=[categories[target],categories[index]];
+  categories.forEach((c,i)=>c.sort_order=i+1);
+  renderCategories();
+  persistCategoryOrder();
+}
+
 function renderCategories(){
   const box=document.getElementById("categoryList");
   if(!box)return;
@@ -143,18 +204,22 @@ function renderCategories(){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map(c=>`
-    <div class="category-item ${c.available?"":"is-hidden"}">
+  box.innerHTML=categories.map((c,index)=>`
+    <div class="category-item ${c.available?"":"is-hidden"}" data-category-id="${esc(String(c.id))}" draggable="true">
+      <div class="category-drag" title="Arrastra para cambiar el orden" aria-label="Arrastrar categoría">⋮⋮</div>
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
       </div>
       <div class="category-actions">
+        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},-1)" ${index===0?"disabled":""} aria-label="Subir categoría">↑</button>
+        <button type="button" class="btn secondary category-move" onclick="moveCategory(${Number(c.id)},1)" ${index===categories.length-1?"disabled":""} aria-label="Bajar categoría">↓</button>
         <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
         <button type="button" class="btn secondary" onclick="toggleCategory(${Number(c.id)})">${c.available?"👁️ Ocultar":"👁️ Mostrar"}</button>
         <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
       </div>
     </div>`).join("");
+  initCategoryOrdering();
 }
 
 function resetCategoryForm(){
