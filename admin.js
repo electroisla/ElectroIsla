@@ -78,7 +78,7 @@ function renderCategoryManagement(){
 }
 let adminSelectPickers=new Map();
 function setupAdminSelects(){
- ["pCategory","pCurrency","pUnit"].forEach(id=>{
+ ["pCategory","pCurrency"].forEach(id=>{
    const select=document.getElementById(id);
    if(select) createAdminSelectPicker(select);
  });
@@ -157,6 +157,57 @@ function closeAdminSelectPicker(picker){
 }
 document.addEventListener("click",e=>{if(!e.target.closest(".admin-select-picker"))document.querySelectorAll(".admin-select-picker.open").forEach(closeAdminSelectPicker)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".admin-select-picker.open").forEach(closeAdminSelectPicker)});
+
+function setupUnitPicker(){
+ const select=document.getElementById("pUnit");
+ const picker=document.getElementById("unitPicker");
+ if(!select||!picker)return;
+ const trigger=picker.querySelector(".admin-select-trigger");
+ const menu=picker.querySelector(".admin-select-menu");
+ if(!trigger||!menu)return;
+ const render=()=>{
+   const parts=[];
+   [...select.children].forEach(child=>{
+     if(child.tagName==="OPTGROUP"){
+       parts.push(`<div class="admin-select-group-label">${esc(child.label||"")}</div>`);
+       [...child.options].forEach(o=>parts.push(adminSelectOptionHtml(o)));
+     }else if(child.tagName==="OPTION") parts.push(adminSelectOptionHtml(child));
+   });
+   menu.innerHTML=parts.join("");
+ };
+ const sync=()=>{
+   const option=select.options[select.selectedIndex];
+   const text=picker.querySelector(".admin-select-trigger-text");
+   if(text)text.textContent=option?option.textContent.trim():"Selecciona una unidad o presentación";
+   menu.querySelectorAll(".admin-select-option").forEach(btn=>{
+     const active=btn.dataset.value===select.value;
+     btn.classList.toggle("active",active);
+     btn.setAttribute("aria-selected",String(active));
+   });
+ };
+ if(!picker.dataset.bound){
+   picker.dataset.bound="1";
+   trigger.addEventListener("click",e=>{
+     e.preventDefault();e.stopPropagation();
+     const open=!picker.classList.contains("open");
+     document.querySelectorAll(".admin-select-picker.open").forEach(x=>{if(x!==picker)closeAdminSelectPicker(x)});
+     picker.classList.toggle("open",open);
+     trigger.setAttribute("aria-expanded",String(open));
+   });
+   menu.addEventListener("click",e=>{
+     const option=e.target.closest(".admin-select-option");
+     if(!option)return;
+     e.preventDefault();e.stopPropagation();
+     select.value=option.dataset.value;
+     select.dispatchEvent(new Event("change",{bubbles:true}));
+     sync();
+     closeAdminSelectPicker(picker);
+   });
+ }
+ select.classList.add("admin-native-select");
+ render();
+ sync();
+}
 
 function updateProductCategoryOptions(selected){
  const select=document.getElementById("pCategory"); if(!select)return;
@@ -404,7 +455,7 @@ function edit(id){
  const unitOptions=[...document.getElementById("pUnit").options].map(o=>o.value);
  if(unitOptions.includes(p.unit||"")){document.getElementById("pUnit").value=p.unit||"";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";}
  else{document.getElementById("pUnit").value="__otra__";document.getElementById("pUnitCustom").value=p.unit||"";document.getElementById("pUnitCustom").style.display="block";}
- syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));syncAdminSelectPicker(document.getElementById("pUnit"));
+ syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));setupUnitPicker();
  document.getElementById("pImage").value=p.image||"";document.getElementById("pDescription").value=p.description||"";document.getElementById("pAvailable").checked=p.available!==false;
  document.getElementById("formTitle").textContent="✏️ Editar producto";showPreview(p.image||"");scrollTo(0,0)
 }
@@ -434,7 +485,7 @@ function compressImage(file){
 const picker=document.getElementById("pImageFile");
 picker.addEventListener("change",async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const status=document.getElementById("photoStatus");status.textContent="Leyendo la foto…";try{const data=await compressImage(file);document.getElementById("pImage").value=data;showPreview(data);status.textContent="✅ Foto cargada. Ahora pulsa «Guardar producto»."}catch(err){document.getElementById("pImage").value="";document.getElementById("imagePreview").innerHTML="";status.textContent="❌ No se pudo cargar la foto.";alert(err.message||"No se pudo cargar la foto.")}finally{picker.value=""}});
 
-document.getElementById("pUnit").addEventListener("change",()=>{const other=document.getElementById("pUnit").value==="__otra__";document.getElementById("pUnitCustom").style.display=other?"block":"none";if(!other)document.getElementById("pUnitCustom").value="";syncAdminSelectPicker(document.getElementById("pUnit"))});
+document.getElementById("pUnit").addEventListener("change",()=>{const other=document.getElementById("pUnit").value==="__otra__";document.getElementById("pUnitCustom").style.display=other?"block":"none";if(!other)document.getElementById("pUnitCustom").value="";setupUnitPicker()});
 
 document.getElementById("productForm").addEventListener("submit",async e=>{
  e.preventDefault();
@@ -448,7 +499,7 @@ document.getElementById("productForm").addEventListener("submit",async e=>{
  const id=document.getElementById("editId").value;const old=[...products];if(id)products=products.map(x=>x.id===id?p:x);else products.push(p);saveLocal();render();
  try{await cloudUpsert(p);reset();render();const status=document.getElementById("cloudStatus");if(status)status.textContent=`☁️ Sincronizado con Supabase · ${products.length} productos`;alert("✅ Producto guardado y sincronizado en la nube.")}catch(err){products=old;saveLocal();render();alert("No se pudo guardar en Supabase. El cambio local fue revertido.\n\n"+(err.message||err))}
 });
-function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));syncAdminSelectPicker(document.getElementById("pUnit"));showPreview("")}
+function reset(){document.getElementById("productForm").reset();document.getElementById("editId").value="";document.getElementById("pImage").value="";document.getElementById("formTitle").textContent="➕ Agregar producto";document.getElementById("pAvailable").checked=true;document.getElementById("pCurrency").value="USD";document.getElementById("pDiscountPrice").value="";document.getElementById("pUnitCustom").value="";document.getElementById("pUnitCustom").style.display="none";syncAdminSelectPicker(document.getElementById("pCategory"));syncAdminSelectPicker(document.getElementById("pCurrency"));setupUnitPicker();showPreview("")}
 document.getElementById("cancelEdit").onclick=reset;
 document.getElementById("categoryForm").addEventListener("submit",saveCategoryForm);
 document.getElementById("cancelCategoryEdit").onclick=resetCategoryForm;
@@ -462,7 +513,7 @@ document.getElementById("refreshCloud").onclick=async()=>{
  catch(err){if(status)status.textContent="⚠️ "+(err.message||err);alert("No se pudo actualizar el catálogo.\n\n"+(err.message||err));}
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
-setupAdminSelects();
+setupAdminSelects();setupUnitPicker();
 (async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoriesAdmin();await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
