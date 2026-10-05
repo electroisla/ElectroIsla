@@ -1404,3 +1404,11 @@ body.category-menu-open{
 .admin-page .admin-grid #pCategory + .admin-select-picker.open .admin-select-menu,
 .admin-page .admin-grid #pCurrency + .admin-select-picker.open .admin-select-menu,
 .admin-page .admin-grid #pUnit + .admin-select-picker.open .admin-select-menu{z-index:10001!important}
+
+
+/* Corrección definitiva: selector de Unidad / presentación independiente y visible */
+#pUnit + #unitPicker{display:block!important;width:100%!important;position:relative!important;margin-top:7px!important;z-index:50!important;}
+#unitPicker.open{z-index:10000!important;}
+#unitPicker .admin-select-menu{display:none!important;visibility:visible!important;opacity:1!important;}
+#unitPicker.open .admin-select-menu{display:block!important;z-index:10001!important;}
+#unitPicker .admin-select-trigger{display:flex!important;width:100%!important;min-height:52px!important;}

@@ -78,10 +78,36 @@ function renderCategoryManagement(){
 }
 let adminSelectPickers=new Map();
 function setupAdminSelects(){
- ["pCategory","pCurrency","pUnit"].forEach(id=>{
+ ["pCategory","pCurrency"].forEach(id=>{
    const select=document.getElementById(id);
    if(select) createAdminSelectPicker(select);
  });
+}
+function setupUnitPicker(){
+ const select=document.getElementById("pUnit");
+ const picker=document.getElementById("unitPicker");
+ if(!select||!picker)return;
+ adminSelectPickers.set("pUnit",picker);
+ select.classList.add("admin-native-select");
+ const trigger=picker.querySelector(".admin-select-trigger");
+ if(!trigger)return;
+ trigger.addEventListener("click",e=>{
+   e.preventDefault();
+   const open=!picker.classList.contains("open");
+   document.querySelectorAll(".admin-select-picker.open").forEach(x=>{x.classList.remove("open");x.querySelector(".admin-select-trigger")?.setAttribute("aria-expanded","false")});
+   picker.classList.toggle("open",open);
+   trigger.setAttribute("aria-expanded",String(open));
+ });
+ picker.querySelector(".admin-select-menu")?.addEventListener("click",e=>{
+   const option=e.target.closest(".admin-select-option");
+   if(!option)return;
+   select.value=option.dataset.value;
+   select.dispatchEvent(new Event("change",{bubbles:true}));
+   syncAdminSelectPicker(select);
+   closeAdminSelectPicker(picker);
+ });
+ renderAdminSelectOptions(select);
+ syncAdminSelectPicker(select);
 }
 function createAdminSelectPicker(select){
  let picker=select.parentElement.querySelector(`.admin-select-picker[data-for="${select.id}"]`);
@@ -464,6 +490,7 @@ document.getElementById("refreshCloud").onclick=async()=>{
 };
 document.getElementById("logoutBtn").onclick=async()=>{await supabaseClient.auth.signOut();location.reload()};
 setupAdminSelects();
+setupUnitPicker();
 (async()=>{const {data:{session}}=await supabaseClient.auth.getSession();if(session)await show()})();
 supabaseClient.channel("products-admin").on("postgres_changes",{event:"*",schema:"public",table:"products"},async()=>{try{const {data,error}=await supabaseClient.from("products").select("*").order("created_at",{ascending:true});if(!error&&data){products=data.map(fromRow);saveLocal();render()}}catch(e){console.warn(e)}}).subscribe();
 supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",schema:"public",table:"categories"},async()=>{try{await loadCategoriesAdmin();await loadCategoryOrder()}catch(e){console.warn(e)}}).subscribe();
