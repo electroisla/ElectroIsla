@@ -354,6 +354,7 @@ async function show(){
    const source=await loadCloud();
    render();
    if(status) status.textContent=source==="cloud"?`☁️ Sincronizado con Supabase · ${products.length} productos`:source==="migrated"?`☁️ Catálogo local enviado a Supabase · ${products.length} productos`:"☁️ Supabase conectado · catálogo vacío";
+   await loadSalesReport();
  }catch(err){
    console.error(err);
    render();
@@ -441,90 +442,88 @@ supabaseClient.channel("categories-admin").on("postgres_changes",{event:"*",sche
 
 
 
-// ElectroIsla — reporte de ventas
+// ===== Reporte de ventas ElectroIsla =====
 let salesRows=[];
-function salesMoney(value,currency){
-  const n=Number(value)||0;
-  return (currency==="USD"?"$":"$")+n.toFixed(2)+" "+currency;
+function salesMoney(v,currency){
+  const n=Number(v)||0;
+  return new Intl.NumberFormat("en-US",{style:"currency",currency:currency||"USD",minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
 }
-function salesEscape(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function salesRangeStart(){
-  const range=document.getElementById("salesRange")?.value||"7d";
+function salesEscape(v){
+  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+}
+function salesRangeStart(range){
   if(range==="all")return null;
-  const d=new Date();
-  d.setHours(0,0,0,0);
-  if(range==="today")return d.toISOString();
-  d.setDate(d.getDate()-(range==="30d"?29:6));
+  const d=new Date(); d.setHours(0,0,0,0);
+  if(range==="7d")d.setDate(d.getDate()-6);
+  if(range==="30d")d.setDate(d.getDate()-29);
   return d.toISOString();
 }
-function renderSalesList(id,items,empty="Sin datos") {
+function renderSalesList(id,items,empty="Sin datos"){
   const box=document.getElementById(id); if(!box)return;
-  box.innerHTML=items.length?items.map(x=>`<div class="sales-list-row"><span>${salesEscape(x.label)}</span><strong>${salesEscape(x.value)}</strong></div>`).join(""):`<div class="sales-empty">${empty}</div>`;
+  if(!items.length){box.innerHTML=`<p class="sales-empty">${salesEscape(empty)}</p>`;return}
+  box.innerHTML=items.map(x=>`<div class="sales-row"><span>${salesEscape(x.label)}</span><strong>${salesEscape(x.value)}</strong></div>`).join("");
 }
-function renderSalesReport(rows){
-  salesRows=rows||[];
-  const count=document.getElementById("salesOrdersCount");
-  const usd=document.getElementById("salesUsdTotal");
-  const cup=document.getElementById("salesCupTotal");
-  if(count)count.textContent=String(salesRows.length);
-  let usdTotal=0,cupTotal=0;
-  const productsMap={},paymentsMap={},categoriesMap={},dailyMap={};
-  salesRows.forEach(o=>{
-    const cur=String(o.currency||"USD").toUpperCase();
-    const total=Number(o.total)||0;
-    if(cur==="USD")usdTotal+=total;else cupTotal+=total;
-    const pm=String(o.payment_method||"Sin especificar");
-    paymentsMap[pm]=(paymentsMap[pm]||0)+total;
-    const day=o.created_at?new Date(o.created_at).toLocaleDateString("es-ES"):"Sin fecha";
-    dailyMap[day]=(dailyMap[day]||0)+total;
-    const items=Array.isArray(o.items)?o.items:[];
-    items.forEach(it=>{
-      const name=String(it.name||"Producto");
-      const qty=Number(it.qty)||0;
-      productsMap[name]=(productsMap[name]||0)+qty;
-      const cat=String(it.category||"Sin categoría");
-      categoriesMap[cat]=(categoriesMap[cat]||0)+(Number(it.line_total)||0);
+function renderSalesReport(){
+  const rows=salesRows;
+  const usd=rows.filter(r=>r.currency==="USD").reduce((a,r)=>a+(Number(r.total)||0),0);
+  const cup=rows.filter(r=>r.currency!=="USD").reduce((a,r)=>a+(Number(r.total)||0),0);
+  const count=document.getElementById("salesOrdersCount"); if(count)count.textContent=String(rows.length);
+  const usdBox=document.getElementById("salesUsdTotal"); if(usdBox)usdBox.textContent=salesMoney(usd,"USD");
+  const cupBox=document.getElementById("salesCupTotal"); if(cupBox)cupBox.textContent=salesMoney(cup,"CUP");
+
+  const products={}; const payments={}; const cats={}; const days={};
+  rows.forEach(r=>{
+    const items=Array.isArray(r.items)?r.items:[];
+    items.forEach(i=>{
+      const name=i.name||"Producto"; const qty=Number(i.qty)||0;
+      products[name]=(products[name]||0)+qty;
+      const cat=i.category||"Sin categoría"; cats[cat]=(cats[cat]||0)+(Number(i.line_total)||0);
     });
+    const pm=r.payment_method||"Sin método"; payments[pm]=(payments[pm]||0)+(Number(r.total)||0);
+    const day=r.created_at?new Date(r.created_at).toLocaleDateString("es-ES"):"Sin fecha"; days[day]=(days[day]||0)+(Number(r.total)||0);
   });
-  if(usd)usd.textContent=salesMoney(usdTotal,"USD");
-  if(cup)cup.textContent=salesMoney(cupTotal,"CUP");
-  renderSalesList("salesTopProducts",Object.entries(productsMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>({label:k,value:`${v} uds.`})));
-  renderSalesList("salesPayments",Object.entries(paymentsMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:salesMoney(v,(k==="USD"||k==="ZELLE")?"USD":"CUP")})));
-  renderSalesList("salesCategories",Object.entries(categoriesMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k,value:salesMoney(v,"USD")})));
-  renderSalesList("salesDaily",Object.entries(dailyMap).sort((a,b)=>new Date(a[0])-new Date(b[0])).map(([k,v])=>({label:k,value:salesMoney(v,"USD")})));
+  renderSalesList("salesTopProducts",Object.entries(products).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([label,v])=>({label,value:`${v} uds.`})));
+  renderSalesList("salesPayments",Object.entries(payments).sort((a,b)=>b[1]-a[1]).map(([label,v])=>({label,value:salesMoney(v,rows.find(r=>r.payment_method===label)?.currency||"USD")})));
+  renderSalesList("salesCategories",Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([label,v])=>({label,value:salesMoney(v,"USD")})));
+  renderSalesList("salesDaily",Object.entries(days).sort((a,b)=>b[0].localeCompare(a[0])).map(([label,v])=>({label,value:salesMoney(v,rows.find(r=>r.created_at&&new Date(r.created_at).toLocaleDateString("es-ES")===label)?.currency||"USD")})));
+
   const table=document.getElementById("salesOrdersTable");
   if(table){
-    table.innerHTML=salesRows.length?`<table class="sales-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Total</th><th>Estado</th></tr></thead><tbody>${salesRows.map(o=>{const cur=String(o.currency||"USD").toUpperCase();return `<tr><td>${salesEscape(o.created_at?new Date(o.created_at).toLocaleString("es-ES"):"")}</td><td>${salesEscape(o.customer_name||"")}<small>${salesEscape(o.customer_phone||"")}</small></td><td>${salesEscape(o.payment_method||"")}</td><td>${salesMoney(o.total,cur)}</td><td>${salesEscape(o.status||"sent")}</td></tr>`}).join("")}</tbody></table>`:`<div class="sales-empty">No hay pedidos registrados en este período.</div>`;
+    if(!rows.length){table.innerHTML='<p class="sales-empty">No hay pedidos registrados en este período.</p>';}
+    else table.innerHTML=`<div class="sales-table-scroll"><table class="sales-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Pago</th><th>Zona</th><th>Total</th><th>Estado</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${salesEscape(r.created_at?new Date(r.created_at).toLocaleString("es-ES"):"")}</td><td>${salesEscape(r.customer_name||"")}<small>${salesEscape(r.customer_phone||"")}</small></td><td>${salesEscape(r.payment_method||"")}</td><td>${salesEscape(r.delivery_zone||"")}</td><td><strong>${salesEscape(salesMoney(r.total,r.currency||"USD"))}</strong></td><td>${salesEscape(r.status||"")}</td></tr>`).join("")}</tbody></table></div>`;
   }
 }
 async function loadSalesReport(){
   const status=document.getElementById("salesStatus");
-  if(status)status.textContent="☁️ Cargando ventas…";
+  if(!status)return;
+  status.textContent="☁️ Cargando ventas…";
+  const range=document.getElementById("salesRange")?.value||"7d";
   try{
     let query=supabaseClient.from("orders").select("id,created_at,customer_name,customer_phone,delivery_zone,payment_method,currency,subtotal,delivery_fee,total,items,note,status").order("created_at",{ascending:false});
-    const start=salesRangeStart();
+    const start=salesRangeStart(range);
     if(start)query=query.gte("created_at",start);
     const {data,error}=await query;
     if(error)throw error;
-    renderSalesReport(data||[]);
-    if(status)status.textContent=`☁️ ${data?.length||0} pedido(s) encontrado(s)`;
+    salesRows=Array.isArray(data)?data:[];
+    renderSalesReport();
+    status.textContent=`☁️ ${salesRows.length} pedido(s) encontrado(s)`;
   }catch(err){
-    salesRows=[];renderSalesReport([]);
-    if(status)status.textContent="⚠️ No se pudo cargar el reporte: "+(err.message||err);
+    salesRows=[];renderSalesReport();
+    status.textContent="⚠️ No se pudo cargar el reporte: "+(err.message||err);
+    console.error("Reporte de ventas:",err);
   }
 }
 function exportSalesCsv(){
-  if(!salesRows.length){alert("No hay ventas para exportar en el período seleccionado.");return}
   const headers=["Fecha","Cliente","Teléfono","Zona","Método de pago","Moneda","Subtotal","Domicilio","Total","Estado"];
-  const rows=salesRows.map(o=>[o.created_at,o.customer_name,o.customer_phone,o.delivery_zone,o.payment_method,o.currency,o.subtotal,o.delivery_fee,o.total,o.status]);
-  const csv=[headers,...rows].map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\
-");
-  const blob=new Blob(["\\ufeff"+csv],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`electroisla-ventas-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+  const lines=[headers,...salesRows.map(r=>[r.created_at,r.customer_name,r.customer_phone,r.delivery_zone,r.payment_method,r.currency,r.subtotal,r.delivery_fee,r.total,r.status])].map(row=>row.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(","));
+  const blob=new Blob(["\ufeff"+lines.join("\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`electroisla-ventas-${new Date().toISOString().slice(0,10)}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-document.getElementById("salesRange")?.addEventListener("change",loadSalesReport);
-document.getElementById("salesRefresh")?.addEventListener("click",loadSalesReport);
-document.getElementById("salesExport")?.addEventListener("click",exportSalesCsv);
+
+const salesRangeEl=document.getElementById("salesRange");
+if(salesRangeEl)salesRangeEl.addEventListener("change",loadSalesReport);
+const salesRefreshEl=document.getElementById("salesRefresh");
+if(salesRefreshEl)salesRefreshEl.addEventListener("click",loadSalesReport);
+const salesExportEl=document.getElementById("salesExport");
+if(salesExportEl)salesExportEl.addEventListener("click",exportSalesCsv);
 supabaseClient.channel("orders-admin").on("postgres_changes",{event:"*",schema:"public",table:"orders"},()=>loadSalesReport()).subscribe();
-const originalShow=show;
-show=async function(){await originalShow();await loadSalesReport()};

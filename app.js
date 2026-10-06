@@ -491,23 +491,31 @@ function checkWhatsAppReturn(){
 }
 
 // ElectroIsla — registro de pedidos para el reporte de ventas.
-function recordOrderForReport({name,phone,zoneName,note,method,totals}){
+async function recordOrderForReport({name,phone,zoneName,note,method,totals}){
   try{
     const orderItems=cart.map(i=>{
       const p=products.find(x=>x.id===i.id);
       if(!p)return null;
       const unitPrice=Number(effectivePrice(p))||0;
       const qty=Number(i.qty)||0;
-      return {id:String(p.id),name:p.name||"",category:p.category||"",qty,unit:p.unit||"",unit_price:unitPrice,line_total:unitPrice*qty};
+      return {
+        id:String(p.id),
+        name:p.name||"",
+        category:p.category||"",
+        qty,
+        unit:p.unit||"",
+        unit_price:unitPrice,
+        line_total:unitPrice*qty
+      };
     }).filter(Boolean);
-    const isUsd=(method==="USD"||method==="ZELLE");
+    const isUsd=method==="USD"||method==="ZELLE";
     const total=Number(isUsd?totals.usdTotal:method==="CUP"?totals.cashTotal:totals.transferTotal)||0;
     const delivery=Number(isUsd?totals.deliveryFeeUSD:method==="CUP"?totals.deliveryFeeCUP:totals.deliveryFeeTransfer)||0;
-    const subtotal=total-delivery;
-    supabaseClient.from("orders").insert({
-      customer_name:name,
-      customer_phone:phone,
-      delivery_zone:zoneName,
+    const subtotal=Math.max(0,total-delivery);
+    const {error}=await supabaseClient.from("orders").insert({
+      customer_name:name||"",
+      customer_phone:phone||"",
+      delivery_zone:zoneName||"",
       payment_method:method,
       currency:isUsd?"USD":"CUP",
       subtotal,
@@ -516,9 +524,13 @@ function recordOrderForReport({name,phone,zoneName,note,method,totals}){
       items:orderItems,
       note:note||"",
       status:"sent"
-    }).then(({error})=>{if(error)console.warn("No se pudo registrar el pedido para el reporte de ventas:",error)});
-  }catch(err){console.warn("No se pudo preparar el registro del pedido:",err)}
+    });
+    if(error)console.warn("No se pudo registrar el pedido para el reporte de ventas:",error);
+  }catch(err){
+    console.warn("No se pudo registrar el pedido para el reporte de ventas:",err);
+  }
 }
+
 document.getElementById("orderForm").addEventListener("submit",e=>{e.preventDefault();const totals=getOrderTotals();const method=document.querySelector('input[name="paymentMethod"]:checked')?.value;if(!method){alert("Selecciona un método de pago.");return}if((method==="USD"||method==="ZELLE")&&!totals.usdAvailable){alert("El pago en USD/Zelle no está disponible para este pedido.");return}if((method==="CUP"||method==="TRANSFERENCIA")&&!totals.cupAvailable){alert("CUP y Transferencia solo están disponibles para pedidos de electrodomésticos.");return}const zone=document.getElementById("municipality").value,other=document.getElementById("otherZone").value.trim();if(!zone){alert("Selecciona la zona de entrega.");return}if(zone==="Otro"&&!other){alert("Escribe cuál es tu zona de entrega.");return}const lines=cart.map(i=>{const p=products.find(x=>x.id===i.id);if(!p)return"";const cur=p.currency||"USD",unitPrice=effectivePrice(p),lineTotal=unitPrice*i.qty,cash=cashCup(p),transfer=transferCup(p);let selectedLine="";if(method==="USD"||method==="ZELLE")selectedLine=money(lineTotal,"USD");else if(method==="CUP")selectedLine=money(cash*i.qty,"CUP");else selectedLine=money(transfer*i.qty,"CUP");return `• ${p.name} — ${i.qty} ${p.unit||"unidad"} — ${selectedLine}`}).join("\n");const name=document.getElementById("customerName").value.trim(),phone=document.getElementById("customerPhone").value.trim(),zoneName=zone==="Otro"?other:zone,note=document.getElementById("note").value.trim();const paymentLabel=method==="USD"?"USD":method==="ZELLE"?"ZELLE":method==="CUP"?"CUP (efectivo)":"TRANSFERENCIA";const subtotalSelected=(method==="USD"||method==="ZELLE")?money(totals.usdTotal-totals.deliveryFeeUSD,"USD"):method==="CUP"?money(totals.cashTotal-totals.deliveryFeeCUP,"CUP"):money(totals.transferTotal-totals.deliveryFeeTransfer,"CUP");const paymentTotal=(method==="USD"||method==="ZELLE")?money(totals.usdTotal,"USD"):method==="CUP"?money(totals.cashTotal,"CUP"):money(totals.transferTotal,"CUP");const deliverySelected=(method==="USD"||method==="ZELLE")?money(totals.deliveryFeeUSD,"USD"):method==="CUP"?money(totals.deliveryFeeCUP,"CUP"):money(totals.deliveryFeeTransfer,"CUP");const deliveryText=totals.deliveryFeeUSD>0?deliverySelected:"Gratis";const msg=`🛒 NUEVO PEDIDO\n\n👤 Cliente: ${name}\n📱 Teléfono: ${phone}\n\n🛍️ PRODUCTOS:\n${lines}\n\n📍 Zona de entrega: ${zoneName}\n\n💳 MÉTODO DE PAGO: ${paymentLabel}\n🧾 Subtotal: ${subtotalSelected}\n🚚 Domicilio: ${deliveryText}\n💰 TOTAL A PAGAR: ${paymentTotal}${note?`\n📝 Nota: ${note}`:""}`;recordOrderForReport({name,phone,zoneName,note,method,totals});markWhatsAppPending();window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,"_blank")});
 
 document.getElementById("thankYouAccept")?.addEventListener("click",finishPurchase);

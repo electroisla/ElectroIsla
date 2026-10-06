@@ -353,7 +353,7 @@
 <div class="row"><button class="btn primary" type="submit">Guardar producto</button><button class="btn secondary" type="button" id="cancelEdit">Limpiar</button></div>
 </form>
 <div class="admin-card"><h2>📦 Catálogo actual</h2><p id="cloudStatus" style="font-size:.9rem;color:#5b6670;margin-top:-6px;margin-bottom:12px">☁️ Esperando conexión…</p><button type="button" class="btn secondary" id="refreshCloud" style="margin-bottom:12px">🔄 Actualizar catálogo</button><div id="adminProducts"></div></div>
-
+</div>
 
 <section class="admin-card sales-report" id="salesReport">
   <div class="sales-report-head">
@@ -361,12 +361,14 @@
     <button type="button" class="btn secondary" id="salesRefresh">🔄 Actualizar</button>
   </div>
   <div class="sales-filters">
-    <label>Período<select id="salesRange">
-      <option value="today">Hoy</option>
-      <option value="7d" selected>Últimos 7 días</option>
-      <option value="30d">Últimos 30 días</option>
-      <option value="all">Todo</option>
-    </select></label>
+    <label>Período
+      <select id="salesRange">
+        <option value="today">Hoy</option>
+        <option value="7d" selected>Últimos 7 días</option>
+        <option value="30d">Últimos 30 días</option>
+        <option value="all">Todo</option>
+      </select>
+    </label>
     <button type="button" class="btn primary" id="salesExport">⬇️ Exportar CSV</button>
   </div>
   <p id="salesStatus" class="sales-status">☁️ Cargando ventas…</p>
@@ -386,9 +388,8 @@
     <div id="salesOrdersTable"></div>
   </div>
 </section>
-
-</div></section></main>
+</section></main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=2"></script>
-<script src="admin.js?v=15"></script>
+<script src="admin.js?v=16"></script>
 </body></html>
