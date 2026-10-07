@@ -136,6 +136,88 @@ function initAllFancySelects(){
   initFancySelect("pUnit","unitPicker","unitPickerTrigger","unitPickerValue","unitPickerOptions");
 }
 
+function persistCategoryOrder(){
+  const updates=categories.map((c,i)=>({id:c.id,sort_order:i+1}));
+  return updates.reduce((promise,item)=>promise.then(async()=>{
+    const {error}=await supabaseClient.from("categories").update({sort_order:item.sort_order}).eq("id",item.id);
+    if(error)throw error;
+  }),Promise.resolve());
+}
+
+async function moveCategory(id,direction){
+  const index=categories.findIndex(c=>String(c.id)===String(id));
+  const target=index+direction;
+  if(index<0||target<0||target>=categories.length)return;
+  const old=categories.map(c=>({...c}));
+  [categories[index],categories[target]]=[categories[target],categories[index]];
+  categories.forEach((c,i)=>c.sort_order=i+1);
+  renderCategories();
+  try{
+    await persistCategoryOrder();
+  }catch(err){
+    categories=old;
+    renderCategories();
+    alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));
+  }
+}
+
+function initCategoryReorder(){
+  const box=document.getElementById("categoryList");
+  if(!box||box.dataset.reorderReady)return;
+  box.dataset.reorderReady="1";
+  let draggedId=null;
+  box.addEventListener("dragstart",e=>{
+    const handle=e.target.closest(".category-drag");
+    if(!handle)return;
+    draggedId=String(handle.dataset.id);
+    const item=handle.closest(".category-item");
+    if(item)item.classList.add("category-dragging");
+    e.dataTransfer.effectAllowed="move";
+    e.dataTransfer.setData("text/plain",draggedId);
+  });
+  box.addEventListener("dragend",e=>{
+    const item=e.target.closest(".category-item");
+    if(item)item.classList.remove("category-dragging");
+    draggedId=null;
+    box.querySelectorAll(".category-drag-over").forEach(x=>x.classList.remove("category-drag-over"));
+  });
+  box.addEventListener("dragover",e=>{
+    if(!draggedId)return;
+    const item=e.target.closest(".category-item");
+    if(!item)return;
+    e.preventDefault();
+    box.querySelectorAll(".category-drag-over").forEach(x=>{if(x!==item)x.classList.remove("category-drag-over")});
+    item.classList.add("category-drag-over");
+  });
+  box.addEventListener("dragleave",e=>{
+    const item=e.target.closest(".category-item");
+    if(item&&!item.contains(e.relatedTarget))item.classList.remove("category-drag-over");
+  });
+  box.addEventListener("drop",async e=>{
+    const item=e.target.closest(".category-item");
+    if(!item||!draggedId)return;
+    e.preventDefault();
+    item.classList.remove("category-drag-over");
+    const targetId=String(item.querySelector(".category-drag")?.dataset.id||"");
+    if(!targetId||targetId===draggedId)return;
+    const from=categories.findIndex(c=>String(c.id)===draggedId);
+    const to=categories.findIndex(c=>String(c.id)===targetId);
+    if(from<0||to<0)return;
+    const old=categories.map(c=>({...c}));
+    const [moved]=categories.splice(from,1);
+    categories.splice(to,0,moved);
+    categories.forEach((c,i)=>c.sort_order=i+1);
+    renderCategories();
+    try{
+      await persistCategoryOrder();
+    }catch(err){
+      categories=old;
+      renderCategories();
+      alert("No se pudo guardar el nuevo orden en Supabase.\n\n"+(err.message||err));
+    }
+  });
+}
+
 function renderCategories(){
   const box=document.getElementById("categoryList");
   if(!box)return;
@@ -143,11 +225,16 @@ function renderCategories(){
     box.innerHTML='<div class="category-empty">No hay categorías creadas todavía.</div>';
     return;
   }
-  box.innerHTML=categories.map(c=>`
+  box.innerHTML=categories.map((c,i)=>`
     <div class="category-item ${c.available?"":"is-hidden"}">
+      <div class="category-drag" title="Arrastra para cambiar de posición" draggable="true" data-id="${esc(c.id)}">☷</div>
       <div class="category-info">
         <div class="category-name">${esc(c.name)}</div>
         <span class="category-state">${c.available?"● Visible en la tienda":"○ Oculta en la tienda"}</span>
+      </div>
+      <div class="category-order">
+        <button type="button" class="btn secondary category-move" ${i===0?"disabled":""} onclick="moveCategory('${String(c.id).replace("'","&#039;")}',-1)" aria-label="Subir categoría">↑</button>
+        <button type="button" class="btn secondary category-move" ${i===categories.length-1?"disabled":""} onclick="moveCategory('${String(c.id).replace("'","&#039;")}',1)" aria-label="Bajar categoría">↓</button>
       </div>
       <div class="category-actions">
         <button type="button" class="btn secondary" onclick="editCategory(${Number(c.id)})">✏️ Editar</button>
@@ -155,6 +242,7 @@ function renderCategories(){
         <button type="button" class="btn secondary" onclick="removeCategory(${Number(c.id)})">🗑️</button>
       </div>
     </div>`).join("");
+  initCategoryReorder();
 }
 
 function resetCategoryForm(){

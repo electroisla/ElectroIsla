@@ -3705,3 +3705,16 @@ button:active{
  .sales-filters label{min-width:0}
  .sales-filters .btn{width:100%}
 }
+
+
+/* ElectroIsla — SOLO controles para organizar categorías */
+.category-item{display:grid!important;grid-template-columns:24px minmax(0,1fr) auto!important;align-items:center!important;gap:7px!important}
+.category-drag{width:24px!important;text-align:center!important;cursor:grab!important;color:#8aa0b5!important;user-select:none!important;font-size:20px!important;line-height:1!important}
+.category-drag:active{cursor:grabbing!important}
+.category-order{display:flex!important;gap:3px!important}
+.category-move{min-width:30px!important;width:30px!important;height:30px!important;padding:4px!important;border-radius:8px!important}
+.category-move:disabled{opacity:.35!important;cursor:not-allowed!important}
+.category-actions{grid-column:1/-1!important;justify-content:flex-end!important;display:flex!important;gap:4px!important;flex-wrap:wrap!important}
+.category-dragging{opacity:.5!important}
+.category-drag-over{border-color:#F28C28!important;box-shadow:0 0 0 2px rgba(242,140,40,.15)!important}
+@media(max-width:420px){.category-item{grid-template-columns:22px minmax(0,1fr) auto!important;gap:5px!important}.category-drag{width:22px!important}.category-move{width:28px!important;min-width:28px!important;height:28px!important}.category-actions{justify-content:flex-start!important}}
