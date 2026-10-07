@@ -3718,3 +3718,35 @@ button:active{
 .category-dragging{opacity:.5!important}
 .category-drag-over{border-color:#F28C28!important;box-shadow:0 0 0 2px rgba(242,140,40,.15)!important}
 @media(max-width:420px){.category-item{grid-template-columns:22px minmax(0,1fr) auto!important;gap:5px!important}.category-drag{width:22px!important}.category-move{width:28px!important;min-width:28px!important;height:28px!important}.category-actions{justify-content:flex-start!important}}
+
+
+/* ElectroIsla — selector de Período del reporte de ventas con el mismo estilo del administrador */
+.sales-filters select#salesRange{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  width:100%!important;
+  min-height:54px!important;
+  margin-top:5px!important;
+  padding:11px 42px 11px 13px!important;
+  border:1px solid #c9d8eb!important;
+  border-radius:14px!important;
+  background-color:#fff!important;
+  color:var(--logo-blue-dark,#072b79)!important;
+  font-weight:600!important;
+  line-height:1.2!important;
+  box-shadow:0 2px 8px rgba(7,43,121,.04)!important;
+  outline:none!important;
+  cursor:pointer!important;
+  background-image:
+    linear-gradient(45deg,transparent 50%,#f58220 50%),
+    linear-gradient(135deg,#f58220 50%,transparent 50%)!important;
+  background-position:
+    calc(100% - 19px) 23px,
+    calc(100% - 13px) 23px!important;
+  background-size:6px 6px,6px 6px!important;
+  background-repeat:no-repeat!important;
+}
+.sales-filters select#salesRange:focus{
+  border-color:var(--logo-blue,#074899)!important;
+  box-shadow:0 0 0 3px rgba(7,72,153,.10)!important;
+}
